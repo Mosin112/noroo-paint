@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Alert as RNAlert } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
   Screen, ScreenHeader, Heading, Field, CTA, Summary, ProgressBar, Alert,
@@ -29,14 +29,15 @@ export function CheckoutScreen({ navigation }: Props) {
   const saveDefaultAddress = useUserStore((s) => s.saveDefaultAddress);
   const isGuest = useAuthStore((s) => s.mode === 'guest');
 
-  // Seed from the saved profile/address when present; the prototype's Marcus
-  // details fall back in for guest sessions so the demo flow stays usable.
+  // Seed from the saved profile/address when present; otherwise leave empty
+  // so the user types their own details (prototype's Marcus McCabe fallback
+  // was removed — pre-filling someone else's name is confusing in production).
   const initialAddress = defaultAddress
     ? `${defaultAddress.line1}${defaultAddress.postcode ? ', ' + defaultAddress.postcode : ''}`
-    : '14 Mill Lane, Joondalup 6027';
+    : '';
   const initialContact = profile?.full_name || profile?.phone
     ? [profile?.full_name, profile?.phone].filter(Boolean).join(' · ')
-    : 'Marcus McCabe · 0412 884 102';
+    : '';
 
   const [address, setAddress] = useState(initialAddress);
   const [contact, setContact] = useState(initialContact);
@@ -91,17 +92,29 @@ export function CheckoutScreen({ navigation }: Props) {
     if (!formValid) return;
     setSubmitting(true);
     try {
-      const res = await postOrder({
-        customer_name: name,
-        customer_phone: phone.replace(/\s/g, ''),
-        delivery: { line1: address, postcode: postcode! },
-        items: items.map((it) => ({
-          product_id: it.product.id,
-          brand: it.brand,
-          colour_name: it.colour_name,
-          quantity: it.quantity,
-        })),
-      });
+      // Hard timeout so the Place-order spinner can't spin forever if the
+      // network drops mid-request. Supabase usually replies in under 2s; 15s
+      // is plenty of slack for slow mobile connections.
+      const timeoutMs = 15_000;
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Order request timed out. Check your connection and try again.')), timeoutMs)
+      );
+
+      const res = await Promise.race([
+        postOrder({
+          customer_name: name,
+          customer_phone: phone.replace(/\s/g, ''),
+          delivery: { line1: address, postcode: postcode! },
+          items: items.map((it) => ({
+            product_id: it.product.id,
+            brand: it.brand,
+            colour_name: it.colour_name,
+            quantity: it.quantity,
+          })),
+        }),
+        timeoutPromise,
+      ]);
+
       // Stash the address + contact so next checkout pre-fills correctly.
       // Fire-and-forget — order placement already succeeded; this is best-effort.
       if (!isGuest) {
@@ -110,6 +123,12 @@ export function CheckoutScreen({ navigation }: Props) {
       }
       clearBasket();
       navigation.navigate('Confirmed', { orderNumber: res.order_number });
+    } catch (e) {
+      // Surface the real reason instead of leaving the user staring at a
+      // spinner. Supabase's error message is usually meaningful (RLS denial,
+      // missing FK, network), so pass it through verbatim.
+      const message = e instanceof Error ? e.message : 'Order failed. Please try again.';
+      RNAlert.alert("We couldn't place your order", message);
     } finally {
       setSubmitting(false);
     }
@@ -127,12 +146,14 @@ export function CheckoutScreen({ navigation }: Props) {
         label={inZone && postcode ? 'Deliver to ✓ Perth metro' : 'Deliver to'}
         value={address}
         onChangeText={setAddress}
+        placeholder="14 Mill Lane, Joondalup 6027"
         autoCapitalize="words"
       />
       <Field
         label="Name & phone"
         value={contact}
         onChangeText={setContact}
+        placeholder="Your name · 0400 000 000"
       />
 
       <View style={{ marginTop: 8 }}>

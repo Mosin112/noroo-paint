@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Alert as RNAlert } from 'react-native';
-import { X } from 'lucide-react-native';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator, Alert as RNAlert } from 'react-native';
+import { Check, X } from 'lucide-react-native';
 import { Screen, ScreenHeader, Heading, Field, CTA, SavedColourChip } from '../../components';
 import { useAuthStore, useSavedColoursStore } from '../../state';
 import { useUserStore } from '../../state/userStore';
@@ -44,41 +44,104 @@ export function AccountScreen() {
 
   const isGuest = mode === 'guest';
 
-  // Local edit buffers; flush to Supabase on blur.
+  // Local edit buffers; flush to Supabase only when the user taps the
+  // tick button next to the field (no autosave on blur — too easy to
+  // half-type and lose work).
   const [address, setAddress] = useState('');
   const [contact, setContact] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [addressSaving, setAddressSaving] = useState(false);
+  const [contactSaving, setContactSaving] = useState(false);
+  const [addressJustSaved, setAddressJustSaved] = useState(false);
+  const [contactJustSaved, setContactJustSaved] = useState(false);
 
-  // Sync from the store whenever it (re)hydrates.
+  // Sync from the store whenever it (re)hydrates. No prototype fallback —
+  // guest mode also starts empty so users type their own details.
   useEffect(() => {
-    setAddress(
-      defaultAddress
-        ? formatAddress(defaultAddress.line1, defaultAddress.postcode)
-        : isGuest ? '14 Mill Lane, Joondalup 6027' : ''
-    );
-  }, [defaultAddress, isGuest]);
+    setAddress(defaultAddress ? formatAddress(defaultAddress.line1, defaultAddress.postcode) : '');
+  }, [defaultAddress]);
 
   useEffect(() => {
-    setContact(
-      profile
-        ? formatContact(profile.full_name, profile.phone)
-        : isGuest ? 'Marcus McCabe · 0412 884 102' : ''
-    );
-  }, [profile, isGuest]);
+    setContact(profile ? formatContact(profile.full_name, profile.phone) : '');
+  }, [profile]);
 
-  const persistAddress = () => {
-    if (isGuest) return;
+  // Truthy address change since last save? Used to decide whether the tick
+  // is "ready to save" (accent) or "already saved" (muted/check).
+  const savedAddress = defaultAddress
+    ? formatAddress(defaultAddress.line1, defaultAddress.postcode)
+    : '';
+  const addressDirty = address.trim() !== savedAddress.trim();
+  const savedContact = profile ? formatContact(profile.full_name, profile.phone) : '';
+  const contactDirty = contact.trim() !== savedContact.trim();
+
+  const persistAddress = async () => {
+    if (isGuest) {
+      RNAlert.alert('Sign in to save', 'Guest sessions don’t persist details — sign in to keep them across installs.');
+      return;
+    }
     const { line1, postcode } = parseAddress(address);
-    if (!line1 || !postcode) return;
-    void saveDefaultAddress({ line1, postcode });
+    if (!line1 || !postcode) {
+      RNAlert.alert('Address needs a postcode', 'Add the 4-digit postcode at the end, e.g. "14 Mill Lane, Joondalup 6027".');
+      return;
+    }
+    setAddressSaving(true);
+    try {
+      await saveDefaultAddress({ line1, postcode });
+      setAddressJustSaved(true);
+      setTimeout(() => setAddressJustSaved(false), 2000);
+    } catch (e) {
+      RNAlert.alert("Couldn't save address", e instanceof Error ? e.message : 'Try again.');
+    } finally {
+      setAddressSaving(false);
+    }
   };
 
-  const persistContact = () => {
-    if (isGuest) return;
+  const persistContact = async () => {
+    if (isGuest) {
+      RNAlert.alert('Sign in to save', 'Guest sessions don’t persist details — sign in to keep them across installs.');
+      return;
+    }
     const { full_name, phone } = parseContact(contact);
-    if (!full_name && !phone) return;
-    void saveProfile({ full_name, phone });
+    if (!full_name && !phone) {
+      RNAlert.alert('Enter your name and phone', 'Format: Name · 0400 000 000');
+      return;
+    }
+    setContactSaving(true);
+    try {
+      await saveProfile({ full_name, phone });
+      setContactJustSaved(true);
+      setTimeout(() => setContactJustSaved(false), 2000);
+    } catch (e) {
+      RNAlert.alert("Couldn't save details", e instanceof Error ? e.message : 'Try again.');
+    } finally {
+      setContactSaving(false);
+    }
   };
+
+  const SaveTick = ({ ready, saving, justSaved, onPress }: {
+    ready: boolean; saving: boolean; justSaved: boolean; onPress: () => void;
+  }) => (
+    <Pressable
+      onPress={onPress}
+      disabled={saving || (!ready && !justSaved)}
+      hitSlop={8}
+      style={[
+        styles.tick,
+        ready && !saving && styles.tickReady,
+        justSaved && styles.tickDone,
+      ]}
+    >
+      {saving ? (
+        <ActivityIndicator size="small" color="#fff" />
+      ) : (
+        <Check
+          size={16}
+          color={ready || justSaved ? '#fff' : colors.muted}
+          strokeWidth={3}
+        />
+      )}
+    </Pressable>
+  );
 
   const confirmDelete = () => {
     RNAlert.alert(
@@ -131,13 +194,29 @@ export function AccountScreen() {
         label="Delivery address"
         value={address}
         onChangeText={setAddress}
-        onBlur={persistAddress}
+        placeholder="14 Mill Lane, Joondalup 6027"
+        trailingAction={
+          <SaveTick
+            ready={addressDirty && address.trim().length > 0}
+            saving={addressSaving}
+            justSaved={addressJustSaved}
+            onPress={persistAddress}
+          />
+        }
       />
       <Field
         label="Name & phone"
         value={contact}
         onChangeText={setContact}
-        onBlur={persistContact}
+        placeholder="Your name · 0400 000 000"
+        trailingAction={
+          <SaveTick
+            ready={contactDirty && contact.trim().length > 0}
+            saving={contactSaving}
+            justSaved={contactJustSaved}
+            onPress={persistContact}
+          />
+        }
       />
 
       <Text style={[text.fieldLabel, { marginTop: 12, marginBottom: 6 }]}>SAVED COLOURS</Text>
@@ -177,4 +256,14 @@ const styles = StyleSheet.create({
   },
   deleteWrap: { alignItems: 'center', paddingVertical: 8, paddingHorizontal: 18, marginBottom: 8 },
   deleteText: { color: colors.warn, fontSize: 12, fontWeight: '500' },
+  tick: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.rule2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tickReady: { backgroundColor: colors.accent },
+  tickDone: { backgroundColor: colors.good },
 });

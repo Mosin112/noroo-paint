@@ -16,11 +16,12 @@ import { requestOtp as apiRequestOtp } from '../../api/client';
 import { CTA } from '../../components/CTA';
 import { colors, radii, spacing, text } from '../../theme';
 
-// PRD §5.3 spec'd 6 boxes; Supabase changed its email-OTP default to 8 digits in
-// 2024 (100M combinations vs 1M, brute-force resistance). We follow Supabase
-// rather than the PRD here — the box count is presentational, not security.
+// Six-box OTP entry. Matches PRD §5.3 spec and the Supabase project's
+// configured OTP length (set Dashboard → Auth → Configuration → OTP length = 6).
+// If Supabase emits a different length the verify call will return a
+// generic error and we shake + ask the user to retry.
 
-const CODE_LENGTH = 8;
+const CODE_LENGTH = 6;
 const RESEND_SECONDS = 30;
 
 type Props = {
@@ -134,7 +135,10 @@ export function OtpModal({ visible, onClose }: Props) {
     >
       <KeyboardAvoidingView
         style={styles.backdrop}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        // iOS uses 'padding'; Android needs 'height' to lift the sheet
+        // above the soft keyboard inside a transparent Modal.
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
       >
         <Pressable style={styles.backdropTap} onPress={onClose} />
         <View style={styles.sheet}>

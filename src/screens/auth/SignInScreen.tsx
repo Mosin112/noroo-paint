@@ -50,7 +50,7 @@ export function SignInScreen() {
       >
         <ScreenHeader title="Welcome" rightAction={<View />} />
         <Heading
-          title="Save your details"
+          title="Please Sign Up"
           sub="We'll remember your address, last order and saved colours. Or continue as a guest."
         />
         <Field

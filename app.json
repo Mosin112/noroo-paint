@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Noroo Paint",
+    "name": "Paint Express",
     "slug": "noroo-paint",
     "scheme": "noroopaint",
     "version": "0.1.0",
@@ -21,11 +21,17 @@
     "android": {
       "package": "au.com.axepayments.noroopaint",
       "versionCode": 1,
+      "softwareKeyboardLayoutMode": "pan",
       "adaptiveIcon": {
         "backgroundColor": "#1c1b18",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "splash": {
+        "image": "./assets/splash-icon.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#f6f3ec"
       },
       "predictiveBackGestureEnabled": false
     },
@@ -33,7 +39,15 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#f6f3ec"
+        }
+      ]
     ],
     "extra": {
       "eas": {
