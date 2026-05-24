@@ -16,9 +16,11 @@ import { requestOtp as apiRequestOtp } from '../../api/client';
 import { CTA } from '../../components/CTA';
 import { colors, radii, spacing, text } from '../../theme';
 
-// PRD §5.3 — six boxes, auto-advance, paste-friendly, 30s resend, shake on bad code.
+// PRD §5.3 spec'd 6 boxes; Supabase changed its email-OTP default to 8 digits in
+// 2024 (100M combinations vs 1M, brute-force resistance). We follow Supabase
+// rather than the PRD here — the box count is presentational, not security.
 
-const CODE_LENGTH = 6;
+const CODE_LENGTH = 8;
 const RESEND_SECONDS = 30;
 
 type Props = {
@@ -136,7 +138,7 @@ export function OtpModal({ visible, onClose }: Props) {
       >
         <Pressable style={styles.backdropTap} onPress={onClose} />
         <View style={styles.sheet}>
-          <Text style={text.screenH1}>Enter the 6-digit code</Text>
+          <Text style={text.screenH1}>Enter the {CODE_LENGTH}-digit code</Text>
           <Text style={[text.subHeading, styles.sub]}>
             {email ? `We sent it to ${email}` : 'We sent you a code.'}
           </Text>
@@ -207,16 +209,17 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     marginBottom: 4,
   },
-  boxCell: { flexBasis: 0, flexGrow: 1, flexShrink: 1, marginHorizontal: 3, minWidth: 0 },
+  // Tight margins keep 8 boxes legible at mobile widths (~40px each on a 375pt screen).
+  boxCell: { flexBasis: 0, flexGrow: 1, flexShrink: 1, marginHorizontal: 2, minWidth: 0 },
   box: {
     alignSelf: 'stretch',
-    height: 56,
+    height: 52,
     borderWidth: 1,
     borderColor: colors.fieldBorder,
     backgroundColor: '#fff',
     borderRadius: radii.field,
     textAlign: 'center',
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '600',
     color: colors.ink,
   },

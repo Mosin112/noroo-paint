@@ -64,7 +64,7 @@ export function SignInScreen() {
           keyboardType="email-address"
         />
         <Text style={styles.helper}>
-          We'll text or email you a 6-digit code. No password to remember.
+          We'll email you a code. No password to remember.
         </Text>
         {lastError ? <Text style={styles.error}>{lastError}</Text> : null}
       </Screen>
