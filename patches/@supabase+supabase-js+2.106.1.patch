@@ -1,0 +1,16 @@
+diff --git a/node_modules/@supabase/supabase-js/dist/index.mjs b/node_modules/@supabase/supabase-js/dist/index.mjs
+index 0b33345..e528560 100644
+--- a/node_modules/@supabase/supabase-js/dist/index.mjs
++++ b/node_modules/@supabase/supabase-js/dist/index.mjs
+@@ -68,7 +68,10 @@ function __awaiter(thisArg, _arguments, P, generator) {
+ let otelModulePromise = null;
+ const OTEL_PKG = "@opentelemetry/api";
+ function loadOtel() {
+-	if (otelModulePromise === null) otelModulePromise = import(/* webpackIgnore: true */ /* turbopackIgnore: true */ /* @vite-ignore */ OTEL_PKG).catch(() => null);
++	// Hermes (React Native release engine) doesn't support dynamic import().
++	// We don't use OpenTelemetry, so stub this to always resolve null — Supabase
++	// just skips adding OTEL trace headers, no other behaviour changes.
++	if (otelModulePromise === null) otelModulePromise = Promise.resolve(null);
+ 	return otelModulePromise;
+ }
+ /**
