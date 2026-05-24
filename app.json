@@ -33,8 +33,7 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-secure-store",
-      "@sentry/react-native"
+      "expo-secure-store"
     ],
     "extra": {
       "eas": {
