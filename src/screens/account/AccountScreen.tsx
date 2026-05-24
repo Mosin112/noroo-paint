@@ -18,7 +18,7 @@ export function AccountScreen() {
   const isGuest = mode === 'guest';
 
   return (
-    <Screen footer={<CTA label="Sign out" variant="ghost" onPress={signOut} />}>
+    <Screen footer={<CTA label="Sign out" variant="ghost" onPress={() => { void signOut(); }} />}>
       <ScreenHeader title="Account" />
       <Heading title="Your account" sub={isGuest ? 'Guest mode — sign in to keep your details across installs.' : undefined} />
 

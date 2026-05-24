@@ -84,7 +84,9 @@ const navTheme = {
 
 export function RootNavigator() {
   const mode = useAuthStore((s) => s.mode);
-  const isAuthed = mode !== 'signed-out';
+  // 'awaiting-otp' stays on SignIn so the OTP modal overlays it. Only fully
+  // verified or guest sessions get the Main tabs.
+  const isAuthed = mode === 'signed-in' || mode === 'guest';
 
   return (
     <NavigationContainer theme={navTheme}>

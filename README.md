@@ -37,15 +37,25 @@ You'll need the Expo Go app on a device, or a configured iOS/Android simulator.
 
 ### Environment
 
-The API client reads one variable. With it unset, every call resolves against
-local seed data so the UI is fully usable without a backend.
+Copy `.env.example` to `.env` and fill in real values. The app reads two
+variables; with neither set, every call resolves against local seed data so
+the UI is fully usable without a backend.
 
-| Variable                     | Purpose                                            |
-| ---------------------------- | -------------------------------------------------- |
-| `EXPO_PUBLIC_API_BASE_URL`   | Base URL for the NestJS API (e.g. `https://api.noroopaint.com.au/v1`) |
+| Variable                          | Purpose                                                                            |
+| --------------------------------- | ---------------------------------------------------------------------------------- |
+| `EXPO_PUBLIC_SUPABASE_URL`        | Supabase project URL (dashboard → Settings → API).                                 |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY`   | Supabase anon/public key. Safe to ship — RLS policies in `db/schema.sql` gate writes. |
+| `EXPO_PUBLIC_API_BASE_URL`        | Optional. Base URL for the NestJS API layer (PRD §2). Unset → talk to Supabase directly. |
 
-Set it in an `.env` file (Expo loads `EXPO_PUBLIC_*` automatically) when wiring
-the real backend.
+#### Supabase setup checklist
+
+1. Create the project, run `db/schema.sql` in the SQL editor.
+2. Auth → Providers → Email: enable "Email OTP".
+3. Auth → SMTP: configure your AWS SES credentials (PRD §2 ships transactional
+   email via SES). Until SMTP is set, OTP emails go through Supabase's default
+   sender (rate-limited, dev only).
+4. Auth → URL Configuration: add the app scheme `noroopaint://` to the allow list.
+5. Storage: create a public bucket `product-images` for the `image_url` column.
 
 ## Project layout
 
@@ -110,9 +120,10 @@ Progress bar segments (1–5) align with the prototype: Where, Finish, Colour, P
 
 ## What's next (Phase 2+)
 
-- Real Supabase backend + Auth (OTP via SES) — replace seed branch in `api/client.ts`.
-- OTP code-entry modal (`src/screens/auth/OtpModal.tsx` — stubbed, not yet rendered).
+- ~~Real Supabase backend + Auth (OTP via SES)~~ — wired in `src/api/client.ts` and `src/api/supabase.ts`. Set the env vars to switch off seed mode.
+- ~~OTP code-entry modal~~ — `src/screens/auth/OtpModal.tsx` with 6-box auto-advance, paste, shake on bad code, 30s resend countdown.
 - Address geocoding & full Perth postcode list (PRD §16 — TBC at kick-off).
+- Sync `saved_colours` store with Supabase (currently local-only after signup).
 - Stripe payments (un-hide the card field on Checkout per §13).
 - App icon + splash from brand assets.
 - EAS Build configuration and store submission.
