@@ -8,10 +8,19 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "backgroundColor": "#f6f3ec",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#f6f3ec"
+    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "au.com.axepayments.noroopaint",
+      "buildNumber": "1"
     },
     "android": {
+      "package": "au.com.axepayments.noroopaint",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#1c1b18",
         "foregroundImage": "./assets/android-icon-foreground.png",
