@@ -12,7 +12,9 @@ export function Summary({ lines }: { lines: SummaryLine[] }) {
   return (
     <View style={styles.wrap}>
       {lines.map((l, i) => (
-        <View key={l.key} style={[styles.row, i > 0 && styles.rowDivider]}>
+        // Index-based key is safe: the lines array is rebuilt fresh on each
+        // render and the labels can repeat (e.g. two of the same product).
+        <View key={i} style={[styles.row, i > 0 && styles.rowDivider]}>
           <Text style={[text.summaryKey, l.emphasis === 'total' && styles.totalKey]}>{l.key}</Text>
           <Text
             style={[
