@@ -35,6 +35,17 @@
     "plugins": [
       "expo-secure-store",
       "@sentry/react-native"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "2157058f-8fe9-4352-8b04-b4e876a5a9af"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/2157058f-8fe9-4352-8b04-b4e876a5a9af"
+    }
   }
 }

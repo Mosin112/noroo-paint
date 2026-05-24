@@ -23,6 +23,7 @@
     "expo": "~56.0.4",
     "expo-secure-store": "~56.0.4",
     "expo-status-bar": "~56.0.4",
+    "expo-updates": "~56.0.16",
     "lucide-react-native": "^1.16.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
