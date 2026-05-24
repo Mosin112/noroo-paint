@@ -73,9 +73,15 @@ create table if not exists saved_colours (
   user_id        uuid references profiles(id) on delete cascade,
   brand          text,
   colour_name    text not null,
-  last_used_at   timestamptz default now(),
-  unique (user_id, lower(brand), lower(colour_name))
+  last_used_at   timestamptz default now()
 );
+
+-- Case-insensitive uniqueness across (user, brand, colour_name). Lives in
+-- a separate index because Postgres doesn't allow function expressions in an
+-- inline UNIQUE constraint. coalesce(brand, '') treats NULL as empty string
+-- so rows with a missing brand still collide on duplicate colour names.
+create unique index if not exists saved_colours_user_brand_name_uq
+  on saved_colours (user_id, lower(coalesce(brand, '')), lower(colour_name));
 
 -- ────────────────────────────────────────────────────────────────────────
 -- Orders + items
