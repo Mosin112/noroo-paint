@@ -157,3 +157,28 @@ create policy "own order_items"    on order_items   for all using (
 
 -- Waitlist: insert-only for everyone; service role reads
 create policy "waitlist insert" on waitlist for insert with check (true);
+
+-- ────────────────────────────────────────────────────────────────────────
+-- auth.users → profiles auto-insert
+-- ────────────────────────────────────────────────────────────────────────
+-- Without this, the first INSERT into orders / addresses / saved_colours
+-- for a new signup fails with a foreign-key violation on user_id.
+
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (id, email)
+  values (new.id, new.email)
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
