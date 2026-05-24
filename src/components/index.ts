@@ -13,3 +13,4 @@ export { Summary } from './Summary';
 export type { SummaryLine } from './Summary';
 export { SavedColourChip } from './SavedColourChip';
 export { FooterLink } from './FooterLink';
+export { ErrorBoundary } from './ErrorBoundary';

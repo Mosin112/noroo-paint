@@ -1,12 +1,16 @@
 // Supabase client. Returns null when env vars are unset so the rest of the
-// API layer can fall back to seed data without runtime errors.
+// API layer can fall back to seed data without runtime errors in dev.
+//
+// In production builds (__DEV__ === false) the boot path in App.tsx hard-fails
+// before this module's null path can be hit — seed mode must never ship.
 //
 // Required env vars (Expo loads EXPO_PUBLIC_* into the bundle automatically):
 //   EXPO_PUBLIC_SUPABASE_URL
 //   EXPO_PUBLIC_SUPABASE_ANON_KEY
 //
 // Email OTP delivery is configured in the Supabase dashboard: Auth → SMTP.
-// Set those credentials to your AWS SES SMTP user (PRD §2).
+// We use Resend SMTP credentials (PRD originally specified SES; swapped to
+// Resend for simpler domain verification and no sandbox-approval wait).
 
 import 'react-native-url-polyfill/auto';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';

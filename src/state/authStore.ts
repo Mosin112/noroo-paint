@@ -6,6 +6,26 @@ import {
   getCurrentUser,
 } from '../api/client';
 
+// Lazy imports break a circular dep: authStore → userStore → api/client
+// (which imports supabase, which imports nothing user-facing) is fine, but
+// userStore itself imports authStore for the isSignedIn() check inside
+// savedColoursStore. Pulling these in lazily inside the functions sidesteps
+// the cycle on module load.
+async function hydrateUserScopes() {
+  const { useUserStore } = await import('./userStore');
+  const { useSavedColoursStore } = await import('./savedColoursStore');
+  await Promise.all([
+    useUserStore.getState().hydrate(),
+    useSavedColoursStore.getState().hydrate(),
+  ]);
+}
+async function clearUserScopes() {
+  const { useUserStore } = await import('./userStore');
+  const { useSavedColoursStore } = await import('./savedColoursStore');
+  useUserStore.getState().clear();
+  useSavedColoursStore.getState().reset();
+}
+
 // Auth flow per PRD §5:
 //   signed-out → user enters email → requestOtp() → 'awaiting-otp'
 //                                                ↓ verifyOtp(code)
@@ -52,6 +72,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const { userId } = await apiVerifyOtp(email, code);
       set({ mode: 'signed-in', userId });
+      void hydrateUserScopes();
     } catch (e) {
       set({ lastError: e instanceof Error ? e.message : String(e) });
       throw e;
@@ -65,11 +86,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signOut: async () => {
     await signOutRemote().catch(() => undefined);
     set({ mode: 'signed-out', email: null, userId: null, lastError: null });
+    void clearUserScopes();
   },
 
   // Restore a Supabase session on cold start (PRD §5.1 "persistent sessions").
   hydrate: async () => {
     const user = await getCurrentUser().catch(() => null);
-    if (user) set({ mode: 'signed-in', email: user.email, userId: user.id });
+    if (user) {
+      set({ mode: 'signed-in', email: user.email, userId: user.id });
+      void hydrateUserScopes();
+    }
   },
 }));

@@ -88,12 +88,47 @@ export async function upsertSavedColour(
       last_used_at: new Date().toISOString(),
     };
   }
+  // We can't use Postgres ON CONFLICT here — the unique index is on
+  // (user_id, lower(coalesce(brand,'')), lower(colour_name)) which is an
+  // expression index and incompatible with PostgREST's onConflict clause.
+  // Do a manual check-then-update-or-insert with RLS doing the user-scoping.
+  const { data: { user } } = await supabase!.auth.getUser();
+  if (!user) throw new Error('Sign in required to save colours.');
+
+  const brandNorm = (brand ?? '').trim().toLowerCase();
+  const nameNorm = colour_name.trim().toLowerCase();
+  const now = new Date().toISOString();
+
+  const { data: existing, error: findErr } = await supabase!
+    .from('saved_colours')
+    .select('id, brand, colour_name, last_used_at')
+    // ilike is case-insensitive; '' coalesce handles a NULL brand
+    .ilike('colour_name', nameNorm)
+    .or(`brand.is.null,brand.ilike.${brandNorm || '%'}`)
+    .limit(20);
+  if (findErr) throw findErr;
+
+  // Verify the match against normalised forms (the OR above is wider than needed).
+  const match = (existing ?? []).find(
+    (r) =>
+      (r.brand ?? '').trim().toLowerCase() === brandNorm &&
+      r.colour_name.trim().toLowerCase() === nameNorm
+  );
+
+  if (match) {
+    const { data, error } = await supabase!
+      .from('saved_colours')
+      .update({ last_used_at: now })
+      .eq('id', match.id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data as SavedColour;
+  }
+
   const { data, error } = await supabase!
     .from('saved_colours')
-    .upsert(
-      { brand, colour_name, last_used_at: new Date().toISOString() },
-      { onConflict: 'user_id,brand,colour_name' }
-    )
+    .insert({ user_id: user.id, brand, colour_name, last_used_at: now })
     .select()
     .single();
   if (error) throw error;
@@ -104,6 +139,119 @@ export async function deleteSavedColour(id: string): Promise<void> {
   if (USE_SEED) return;
   const { error } = await supabase!.from('saved_colours').delete().eq('id', id);
   if (error) throw error;
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Profile (name + phone) — PRD §10
+// ────────────────────────────────────────────────────────────────────────
+
+export type Profile = {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  phone: string | null;
+};
+
+export async function getProfile(): Promise<Profile | null> {
+  if (USE_SEED) return null;
+  const { data: { user } } = await supabase!.auth.getUser();
+  if (!user) return null;
+  const { data, error } = await supabase!
+    .from('profiles')
+    .select('id, email, full_name, phone')
+    .eq('id', user.id)
+    .maybeSingle();
+  if (error) throw error;
+  return data as Profile | null;
+}
+
+export async function updateProfile(patch: { full_name?: string; phone?: string }): Promise<Profile> {
+  if (USE_SEED) {
+    return { id: 'seed', email: null, full_name: patch.full_name ?? null, phone: patch.phone ?? null };
+  }
+  const { data: { user } } = await supabase!.auth.getUser();
+  if (!user) throw new Error('Sign in required.');
+  const { data, error } = await supabase!
+    .from('profiles')
+    .update(patch)
+    .eq('id', user.id)
+    .select('id, email, full_name, phone')
+    .single();
+  if (error) throw error;
+  return data as Profile;
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Addresses (PRD §11) — one default per user for MVP
+// ────────────────────────────────────────────────────────────────────────
+
+export type Address = {
+  id: string;
+  user_id: string;
+  line1: string;
+  suburb: string | null;
+  postcode: string;
+  state: string | null;
+  country: string | null;
+  is_default: boolean;
+};
+
+export async function getDefaultAddress(): Promise<Address | null> {
+  if (USE_SEED) return null;
+  const { data: { user } } = await supabase!.auth.getUser();
+  if (!user) return null;
+  const { data, error } = await supabase!
+    .from('addresses')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('is_default', true)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data as Address | null;
+}
+
+export async function upsertDefaultAddress(input: {
+  line1: string;
+  suburb?: string;
+  postcode: string;
+}): Promise<Address> {
+  if (USE_SEED) {
+    return {
+      id: 'seed', user_id: 'seed',
+      line1: input.line1, suburb: input.suburb ?? null,
+      postcode: input.postcode, state: 'WA', country: 'AU', is_default: true,
+    };
+  }
+  const { data: { user } } = await supabase!.auth.getUser();
+  if (!user) throw new Error('Sign in required.');
+
+  // Find any existing default; otherwise insert a new row.
+  const existing = await getDefaultAddress();
+  if (existing) {
+    const { data, error } = await supabase!
+      .from('addresses')
+      .update({ line1: input.line1, suburb: input.suburb ?? null, postcode: input.postcode })
+      .eq('id', existing.id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data as Address;
+  }
+  const { data, error } = await supabase!
+    .from('addresses')
+    .insert({
+      user_id: user.id,
+      line1: input.line1,
+      suburb: input.suburb ?? null,
+      postcode: input.postcode,
+      is_default: true,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Address;
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -279,4 +427,15 @@ export async function getCurrentUser(): Promise<{ id: string; email: string | nu
   if (USE_SEED) return null;
   const { data } = await supabase!.auth.getUser();
   return data.user ? { id: data.user.id, email: data.user.email ?? null } : null;
+}
+
+// Calls the delete-account Edge Function which verifies the caller's JWT and
+// then uses the service-role key to remove the auth.users row. FK ON DELETE
+// CASCADE in schema.sql wipes profile / addresses / saved_colours / orders.
+// Apple App Store requires this; see supabase/functions/delete-account/.
+export async function deleteAccount(): Promise<void> {
+  if (USE_SEED) return;
+  const { error } = await supabase!.functions.invoke('delete-account');
+  if (error) throw error;
+  await supabase!.auth.signOut();
 }

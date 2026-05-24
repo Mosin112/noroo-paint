@@ -43,19 +43,38 @@ the UI is fully usable without a backend.
 
 | Variable                          | Purpose                                                                            |
 | --------------------------------- | ---------------------------------------------------------------------------------- |
-| `EXPO_PUBLIC_SUPABASE_URL`        | Supabase project URL (dashboard → Settings → API).                                 |
-| `EXPO_PUBLIC_SUPABASE_ANON_KEY`   | Supabase anon/public key. Safe to ship — RLS policies in `db/schema.sql` gate writes. |
-| `EXPO_PUBLIC_API_BASE_URL`        | Optional. Base URL for the NestJS API layer (PRD §2). Unset → talk to Supabase directly. |
+| `EXPO_PUBLIC_SUPABASE_URL`        | Supabase project URL (dashboard → Settings → API). **Required in production.**     |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY`   | Supabase publishable/anon key. Safe to ship — RLS gates writes. **Required in production.** |
+| `EXPO_PUBLIC_SENTRY_DSN`          | Sentry DSN for crash reporting. Optional; no-ops when unset.                       |
+| `EXPO_PUBLIC_API_BASE_URL`        | Optional. Base URL for a NestJS API layer (PRD §2). Unset → talk to Supabase directly. |
+
+In production builds (`__DEV__ === false`) the app hard-fails at boot if
+the Supabase vars are missing — see `src/lib/env.ts`. Seed mode never ships.
 
 #### Supabase setup checklist
 
-1. Create the project, run `db/schema.sql` in the SQL editor.
-2. Auth → Providers → Email: enable "Email OTP".
-3. Auth → SMTP: configure your AWS SES credentials (PRD §2 ships transactional
-   email via SES). Until SMTP is set, OTP emails go through Supabase's default
-   sender (rate-limited, dev only).
-4. Auth → URL Configuration: add the app scheme `noroopaint://` to the allow list.
-5. Storage: create a public bucket `product-images` for the `image_url` column.
+1. Create the project. SQL Editor → run `db/schema.sql`, then each file under
+   `db/migrations/` in order, then `db/seed_products.sql` for the starter catalogue.
+2. Auth → Providers → Email: turn **"Confirm email" OFF** so first-time signins
+   get the OTP straight away.
+3. Auth → Email Templates → **Magic Link**: replace the body's `{{ .ConfirmationURL }}`
+   block with `{{ .Token }}` so users see the 8-digit code instead of a link.
+4. Auth → SMTP: paste your Resend (or SES) SMTP credentials so emails go via
+   your own domain.
+5. Auth → URL Configuration: add the app scheme `noroopaint://` to the allow list.
+6. Storage: create a public bucket `product-images` for the `image_url` column.
+7. Edge Functions: deploy the delete-account function so the in-app
+   "Delete account" CTA works (Apple App Store requires this).
+
+   ```bash
+   npm i -g supabase
+   supabase login
+   supabase link --project-ref <your-project-ref>
+   supabase functions deploy delete-account
+   ```
+
+   The function reads `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` from the
+   Edge Function secrets (set automatically on deploy).
 
 ## Project layout
 

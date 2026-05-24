@@ -6,6 +6,8 @@ import {
   type SummaryLine,
 } from '../../components';
 import { useBasketStore, calculateTotals } from '../../state';
+import { useUserStore } from '../../state/userStore';
+import { useAuthStore } from '../../state/authStore';
 import { checkZone, postOrder } from '../../api/client';
 import type { ShopStackParamList } from '../../navigation/types';
 import { colors, text } from '../../theme';
@@ -21,9 +23,23 @@ function extractPostcode(addr: string): string | null {
 export function CheckoutScreen({ navigation }: Props) {
   const items = useBasketStore((s) => s.items);
   const clearBasket = useBasketStore((s) => s.clear);
+  const profile = useUserStore((s) => s.profile);
+  const defaultAddress = useUserStore((s) => s.defaultAddress);
+  const saveProfile = useUserStore((s) => s.saveProfile);
+  const saveDefaultAddress = useUserStore((s) => s.saveDefaultAddress);
+  const isGuest = useAuthStore((s) => s.mode === 'guest');
 
-  const [address, setAddress] = useState('14 Mill Lane, Joondalup 6027');
-  const [contact, setContact] = useState('Marcus McCabe · 0412 884 102');
+  // Seed from the saved profile/address when present; the prototype's Marcus
+  // details fall back in for guest sessions so the demo flow stays usable.
+  const initialAddress = defaultAddress
+    ? `${defaultAddress.line1}${defaultAddress.postcode ? ', ' + defaultAddress.postcode : ''}`
+    : '14 Mill Lane, Joondalup 6027';
+  const initialContact = profile?.full_name || profile?.phone
+    ? [profile?.full_name, profile?.phone].filter(Boolean).join(' · ')
+    : 'Marcus McCabe · 0412 884 102';
+
+  const [address, setAddress] = useState(initialAddress);
+  const [contact, setContact] = useState(initialContact);
   const [inZone, setInZone] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -86,6 +102,12 @@ export function CheckoutScreen({ navigation }: Props) {
           quantity: it.quantity,
         })),
       });
+      // Stash the address + contact so next checkout pre-fills correctly.
+      // Fire-and-forget — order placement already succeeded; this is best-effort.
+      if (!isGuest) {
+        void saveDefaultAddress({ line1: address, postcode: postcode! });
+        void saveProfile({ full_name: name, phone: phone.replace(/\s/g, '') });
+      }
       clearBasket();
       navigation.navigate('Confirmed', { orderNumber: res.order_number });
     } finally {

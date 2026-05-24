@@ -89,7 +89,9 @@ create unique index if not exists saved_colours_user_brand_name_uq
 create table if not exists orders (
   id                       uuid primary key default gen_random_uuid(),
   order_number             text unique not null,
-  user_id                  uuid references profiles(id),
+  -- ON DELETE SET NULL so account deletion keeps the business record but
+  -- breaks the link to the deleted profile (PII is wiped via cascade elsewhere).
+  user_id                  uuid references profiles(id) on delete set null,
   guest_email              text,
   customer_name            text not null,
   customer_phone           text not null,
