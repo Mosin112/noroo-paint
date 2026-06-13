@@ -51,10 +51,12 @@ export function SignInScreen() {
         <ScreenHeader title="Welcome" rightAction={<View />} />
         <View style={styles.logoWrap}>
           <Image
-            source={require('../../../assets/paint-express-logo.png')}
+            // Noroo Paint wordmark — used inside the app per v2.3 prototype.
+            // (The Paint Express paint-tin mark stays as the launcher icon.)
+            source={require('../../../assets/noroo-paint-logo.png')}
             style={styles.logo}
             resizeMode="contain"
-            accessibilityLabel="Paint Express logo"
+            accessibilityLabel="Noroo Paint"
           />
         </View>
         <Heading
