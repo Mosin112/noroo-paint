@@ -10,7 +10,7 @@ import {
 import { useBasketStore, calculateTotals } from '../../state';
 import { useUserStore } from '../../state/userStore';
 import { useAuthStore } from '../../state/authStore';
-import { checkZone, postOrder } from '../../api/client';
+import { checkZone, postOrder, sendOrderEmail } from '../../api/client';
 import { PICKUP_LOCATION, type DeliveryMode } from '../../types/domain';
 import type { ShopStackParamList } from '../../navigation/types';
 import { colors, text } from '../../theme';
@@ -25,6 +25,7 @@ export function CheckoutScreen({ navigation }: Props) {
   const saveProfile = useUserStore((s) => s.saveProfile);
   const saveDefaultAddress = useUserStore((s) => s.saveDefaultAddress);
   const isGuest = useAuthStore((s) => s.mode === 'guest');
+  const userEmail = useAuthStore((s) => s.email);
 
   const [mode, setMode] = useState<DeliveryMode>('delivery');
   const [name, setName] = useState(profile?.full_name ?? '');
@@ -144,8 +145,45 @@ export function CheckoutScreen({ navigation }: Props) {
       if (!isGuest) {
         void saveProfile({ full_name: name.trim(), phone: phoneDigits });
       }
+
+      // Build the Confirmed-screen payload from in-memory state so we don't
+      // have to round-trip the order back from Supabase. (We also fire-and-
+      // forget the order-email Edge Function next.)
+      const confirmedItems = items.map((it) => ({
+        name: it.product.name,
+        tin_size: it.product.tin_size,
+        finish: it.product.finish,
+        brand: it.brand,
+        colour_name: it.colour_name,
+        quantity: it.quantity,
+        unitPrice: it.product.price_aud,
+        lineTotal: it.product.price_aud * it.quantity,
+      }));
+      const confirmedOrder = {
+        orderNumber: res.order_number,
+        mode,
+        customerName: name.trim(),
+        customerPhone: phoneDigits,
+        address: mode === 'delivery'
+          ? { line1: line1.trim(), line2: line2.trim() || undefined, suburb: suburb.trim(), postcode: postcode.trim() }
+          : undefined,
+        pickupName: mode === 'pickup' ? PICKUP_LOCATION.name : undefined,
+        pickupAddress: mode === 'pickup' ? PICKUP_LOCATION.address : undefined,
+        pickupHours: mode === 'pickup' ? PICKUP_LOCATION.hours : undefined,
+        notes: notes.trim() || undefined,
+        items: confirmedItems,
+        subtotal: totals.subtotal,
+        delivery: totals.delivery,
+        gst: totals.gst,
+        total: totals.total,
+      };
+
+      // Fire the order-notification email via the Edge Function. Fire-and-
+      // forget — the order is already in the DB, the email is bonus.
+      void sendOrderEmail({ ...confirmedOrder, customerEmail: userEmail }).catch(() => undefined);
+
       clearBasket();
-      navigation.navigate('Confirmed', { orderNumber: res.order_number });
+      navigation.navigate('Confirmed', { order: confirmedOrder });
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Order failed. Please try again.';
       RNAlert.alert("We couldn't place your order", message);

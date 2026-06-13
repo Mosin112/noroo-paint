@@ -63,18 +63,38 @@ the Supabase vars are missing — see `src/lib/env.ts`. Seed mode never ships.
    your own domain.
 5. Auth → URL Configuration: add the app scheme `noroopaint://` to the allow list.
 6. Storage: create a public bucket `product-images` for the `image_url` column.
-7. Edge Functions: deploy the delete-account function so the in-app
-   "Delete account" CTA works (Apple App Store requires this).
+7. Edge Functions — deploy the two we ship:
 
    ```bash
    npm i -g supabase
    supabase login
    supabase link --project-ref <your-project-ref>
    supabase functions deploy delete-account
+   supabase functions deploy send-order-email
    ```
 
-   The function reads `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` from the
-   Edge Function secrets (set automatically on deploy).
+   **`delete-account`** powers the in-app "Delete account" CTA (Apple App
+   Store requires this). It only needs `SUPABASE_URL` +
+   `SUPABASE_SERVICE_ROLE_KEY`, which Supabase injects automatically.
+
+   **`send-order-email`** ships a branded HTML+text email to the fulfilment
+   team whenever a customer places an order. Set these secrets once:
+
+   ```bash
+   supabase secrets set \
+     RESEND_API_KEY=re_xxx... \
+     ORDER_NOTIFICATION_EMAIL=mohsin.hafeezit@gmail.com \
+     ORDER_FROM_EMAIL='Paint Express <orders@axepayments.co>'
+   ```
+
+   - `RESEND_API_KEY` — the same Resend API key you set in Supabase Auth
+     SMTP, or a new sending-scoped key from the Resend dashboard.
+   - `ORDER_NOTIFICATION_EMAIL` — where order notifications land. Accepts
+     comma-separated addresses for multiple recipients.
+   - `ORDER_FROM_EMAIL` — sender; must live on a verified Resend domain.
+
+   To change the recipient later, re-run `supabase secrets set
+   ORDER_NOTIFICATION_EMAIL=…` — no app rebuild needed.
 
 ## Project layout
 

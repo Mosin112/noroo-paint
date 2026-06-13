@@ -285,6 +285,28 @@ export type OrderResponse = {
   order_number: string;
 };
 
+export type OrderSummary = {
+  id: string;
+  order_number: string;
+  total_aud: number;
+  created_at: string;
+  delivery_mode: 'delivery' | 'pickup';
+};
+
+// Pulls the signed-in user's recent orders for the Account screen. RLS makes
+// sure they only see their own rows. Returns an empty array for guests or
+// when the user is unauthenticated.
+export async function listMyOrders(limit = 10): Promise<OrderSummary[]> {
+  if (USE_SEED) return [];
+  const { data, error } = await supabase!
+    .from('orders')
+    .select('id, order_number, total_aud, created_at, delivery_mode')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as OrderSummary[];
+}
+
 export async function postOrder(req: OrderRequest): Promise<OrderResponse> {
   const d = new Date();
   const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -453,4 +475,47 @@ export async function deleteAccount(): Promise<void> {
   const { error } = await supabase!.functions.invoke('delete-account');
   if (error) throw error;
   await supabase!.auth.signOut();
+}
+
+// Order notification email — fires the send-order-email Edge Function which
+// uses Resend to deliver a branded HTML/text email to the fulfilment team.
+// Payload mirrors the Confirmed screen so the recipient sees the same detail.
+//
+// Best-effort: errors are propagated for the caller to log/swallow. The order
+// is already in Supabase before we get here, so a failure here just means
+// nobody gets pinged for that one order.
+export type OrderEmailPayload = {
+  orderNumber: string;
+  mode: 'delivery' | 'pickup';
+  customerName: string;
+  customerPhone: string;
+  customerEmail?: string | null;
+  address?: { line1: string; line2?: string; suburb: string; postcode: string };
+  pickupName?: string;
+  pickupAddress?: string;
+  pickupHours?: string;
+  notes?: string;
+  items: Array<{
+    name: string;
+    tin_size?: string | null;
+    finish?: string | null;
+    brand?: string | null;
+    colour_name?: string | null;
+    quantity: number;
+    unitPrice: number;
+    lineTotal: number;
+  }>;
+  subtotal: number;
+  delivery: number;
+  gst: number;
+  total: number;
+};
+
+export async function sendOrderEmail(order: OrderEmailPayload): Promise<void> {
+  if (USE_SEED) return;
+  // The Edge Function reads the recipient from its ORDER_NOTIFICATION_EMAIL
+  // secret so we don't ship it to the client. Caller's session JWT proves
+  // they're authenticated.
+  const { error } = await supabase!.functions.invoke('send-order-email', { body: order });
+  if (error) throw error;
 }
