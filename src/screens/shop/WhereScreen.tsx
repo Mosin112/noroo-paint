@@ -31,7 +31,7 @@ export function WhereScreen({ navigation }: Props) {
   return (
     <Screen>
       <ProgressBar step={1} totalSteps={5} />
-      <ScreenHeader title="New order" />
+      <ScreenHeader title="New order" showCart />
       <Heading title="Where's the paint going?" sub="Choose a category of paint." />
 
       <View style={styles.grid}>

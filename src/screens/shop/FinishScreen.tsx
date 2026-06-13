@@ -66,7 +66,7 @@ export function FinishScreen({ route, navigation }: Props) {
   return (
     <Screen>
       <ProgressBar step={2} totalSteps={5} />
-      <ScreenHeader title={whereLabel} onBack={() => navigation.goBack()} />
+      <ScreenHeader title={whereLabel} onBack={() => navigation.goBack()} showCart />
       <Heading
         title={isAccessory ? 'Accessories' : 'Choose your paint'}
         sub={

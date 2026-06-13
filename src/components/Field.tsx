@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TextInputProps } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Platform, TextInputProps } from 'react-native';
 import { colors, radii, spacing, text } from '../theme';
 
 type Props = TextInputProps & {
@@ -12,13 +12,17 @@ type Props = TextInputProps & {
   readonlyValue?: string;
 };
 
+// On web RN-web leaves the browser's native :focus outline on <input>,
+// which renders as an orange/yellow rectangle around the field. Kill it
+// here — the wrapper's red border + soft ring is our focus affordance.
+const KILL_WEB_OUTLINE = Platform.OS === 'web'
+  ? ({ outlineWidth: 0, outlineStyle: 'none' } as any)
+  : null;
+
 // v2.3 fields read as calm at rest:
-//   - Resting: neutral grey border, regardless of `required`.
-//   - Focused: red border + soft red ring + red label.
-//   - Required: shows a red asterisk in the label so the user still knows
-//     it's mandatory without the field shouting at them.
-// This matches the prototype's "outline-only-when-active" behaviour from
-// the Address form spec (Design System §11).
+//   - Resting: neutral grey border.
+//   - Focused: red border (softer than the saturated brand red) + light ring + red label.
+//   - Required: red asterisk in the label only — the border doesn't shout.
 export function Field({
   label,
   required,
@@ -31,12 +35,15 @@ export function Field({
   ...input
 }: Props) {
   const [focused, setFocused] = useState(false);
-  const showRedHighlight = focused;
+  // Treat empty / whitespace-only strings as empty so the placeholder
+  // styling kicks in. Numbers (used for some inputs) coerce naturally.
+  const value = input.value;
+  const isEmpty = value === undefined || value === null || (typeof value === 'string' && value.trim() === '');
 
   return (
-    <View style={[styles.wrap, showRedHighlight && styles.wrapFocused]}>
+    <View style={[styles.wrap, focused && styles.wrapFocused]}>
       <View style={styles.labelRow}>
-        <Text style={showRedHighlight ? text.fieldLabelAccent : text.fieldLabel}>
+        <Text style={focused ? text.fieldLabelAccent : text.fieldLabel}>
           {label}
           {required ? <Text style={styles.requiredStar}> *</Text> : null}
         </Text>
@@ -47,7 +54,15 @@ export function Field({
           <Text style={[text.fieldValue, styles.input, styles.inputFlex]}>{readonlyValue}</Text>
         ) : (
           <TextInput
-            style={[text.fieldValue, styles.input, styles.inputFlex, style]}
+            style={[
+              styles.input,
+              styles.inputFlex,
+              // Placeholder appearance — slightly smaller, normal weight,
+              // so it doesn't look like the user already typed something.
+              isEmpty ? styles.inputPlaceholderTone : styles.inputTypedTone,
+              KILL_WEB_OUTLINE,
+              style,
+            ]}
             placeholderTextColor={colors.muted}
             onFocus={(e) => { setFocused(true); onFocus?.(e); }}
             onBlur={(e) => { setFocused(false); onBlur?.(e); }}
@@ -71,21 +86,25 @@ const styles = StyleSheet.create({
     marginBottom: 9,
     gap: 3,
   },
-  // Soft focus ring — red border + glow only while the field is active.
+  // Soft red border — toned down from the previous 1.5px saturated red +
+  // 18% opacity ring (felt like an error state). Now it's the same width
+  // with a near-invisible glow that just hints at focus.
   wrapFocused: {
-    borderColor: colors.accent,
+    borderColor: '#F2A0A4',
     shadowColor: colors.accent,
-    shadowOpacity: 0.18,
-    shadowRadius: 6,
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
     shadowOffset: { width: 0, height: 0 },
-    elevation: 2,
   },
   labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  // The asterisk stays red regardless of focus so required-ness is still
-  // visible at rest.
+  // Asterisk stays in the strong brand red so required-ness reads at a glance.
   requiredStar: { color: colors.accent, fontWeight: '700' },
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   inputFlex: { flex: 1 },
-  input: { padding: 0, margin: 0 },
+  input: { padding: 0, margin: 0, fontFamily: text.fieldValue.fontFamily },
+  // Typed value — full ink weight, real size.
+  inputTypedTone: { fontSize: 14, fontWeight: '600', color: colors.ink },
+  // Placeholder hint — smaller, normal weight, muted color.
+  inputPlaceholderTone: { fontSize: 13, fontWeight: '400', color: colors.ink },
   actionWrap: { marginLeft: 6 },
 });

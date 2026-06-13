@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
@@ -11,20 +11,14 @@ import { colors, radii, spacing, text } from '../../theme';
 
 type Props = NativeStackScreenProps<ShopStackParamList, 'Colour'>;
 
-// True when the product can only be supplied white (per Design System §8).
-// We pre-fill "White" and switch the helper copy.
-function isWhiteOnly(tinting_base: string | null | undefined): boolean {
-  if (!tinting_base) return false;
-  return /white/i.test(tinting_base);
-}
-
 export function ColourScreen({ route, navigation }: Props) {
   const { product } = route.params;
   const isAccessory = product.category === 'Accessories';
-  const whiteOnly = isWhiteOnly(product.tinting_base);
 
+  // Always start blank. White-base products used to auto-fill "White" but
+  // that pre-filled value confused customers; they now type their own.
   const [brand, setBrand] = useState('');
-  const [colourName, setColourName] = useState(whiteOnly ? 'White' : '');
+  const [colourName, setColourName] = useState('');
   const [notes, setNotes] = useState('');
   const [qty, setQty] = useState(1);
   const [activeSaved, setActiveSaved] = useState<string | null>(null);
@@ -53,15 +47,6 @@ export function ColourScreen({ route, navigation }: Props) {
     }
   }, [isAccessory]);
 
-  // For the white-only "White" pre-fill, mark the matching saved chip hot.
-  const whiteSavedChip = useMemo(
-    () => savedColours.find((c) => !c.brand && /^white$/i.test(c.colour_name)),
-    [savedColours],
-  );
-  useEffect(() => {
-    if (whiteOnly && whiteSavedChip) setActiveSaved(whiteSavedChip.id);
-  }, [whiteOnly, whiteSavedChip]);
-
   const canContinue = isAccessory || colourName.trim().length > 0;
 
   const handleContinue = () => {
@@ -82,19 +67,17 @@ export function ColourScreen({ route, navigation }: Props) {
     navigation.navigate('Basket');
   };
 
-  // v2.3 copy varies by whether the product is white-only.
+  // v2.3 — same prompt for all paint products (no more white-only special copy).
   const subCopy = isAccessory
     ? 'No tinting needed for accessories.'
-    : whiteOnly
-      ? 'This product is supplied white. Keep White, or write a colour to be tinted.'
-      : 'Please be specific. As much information as possible ensures a correct tint.';
+    : 'Please be specific. As much information as possible ensures a correct tint.';
 
   return (
     <Screen
       footer={<CTA label="Add to basket" onPress={handleContinue} disabled={!canContinue} />}
     >
       <ProgressBar step={3} totalSteps={5} />
-      <ScreenHeader title="Colour" onBack={() => navigation.goBack()} />
+      <ScreenHeader title="Colour" onBack={() => navigation.goBack()} showCart />
       <Heading
         title={isAccessory ? 'Confirm accessory' : 'Choose your colour'}
         sub={subCopy}

@@ -20,20 +20,24 @@ type Props = NativeStackScreenProps<ShopStackParamList, 'Checkout'>;
 export function CheckoutScreen({ navigation }: Props) {
   const items = useBasketStore((s) => s.items);
   const clearBasket = useBasketStore((s) => s.clear);
-  const profile = useUserStore((s) => s.profile);
-  const defaultAddress = useUserStore((s) => s.defaultAddress);
+  // saved profile + address are still persisted on order so the Account
+  // tab reflects the latest details, but we don't read them here — the
+  // form is always blank on entry per the v2.3 follow-up feedback.
   const saveProfile = useUserStore((s) => s.saveProfile);
   const saveDefaultAddress = useUserStore((s) => s.saveDefaultAddress);
   const isGuest = useAuthStore((s) => s.mode === 'guest');
   const userEmail = useAuthStore((s) => s.email);
 
   const [mode, setMode] = useState<DeliveryMode>('delivery');
-  const [name, setName] = useState(profile?.full_name ?? '');
-  const [phone, setPhone] = useState(profile?.phone ?? '');
-  const [line1, setLine1] = useState(defaultAddress?.line1 ?? '');
+  // Per user feedback (v2.3 follow-up): every checkout starts blank — no
+  // pre-fill from saved profile or default address. People should type the
+  // details for the order they're actually placing.
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [line1, setLine1] = useState('');
   const [line2, setLine2] = useState('');
-  const [suburb, setSuburb] = useState(defaultAddress?.suburb ?? '');
-  const [postcode, setPostcode] = useState(defaultAddress?.postcode ?? '');
+  const [suburb, setSuburb] = useState('');
+  const [postcode, setPostcode] = useState('');
   const [notes, setNotes] = useState('');
 
   const [inZone, setInZone] = useState(true);
@@ -138,7 +142,8 @@ export function CheckoutScreen({ navigation }: Props) {
         timeoutPromise,
       ]);
 
-      // Persist delivery address + profile so next checkout pre-fills correctly.
+      // Persist delivery address + profile so the Account tab reflects the
+      // user's latest details. The Checkout form itself no longer pre-fills.
       if (!isGuest && mode === 'delivery') {
         void saveDefaultAddress({ line1: line1.trim(), suburb: suburb.trim(), postcode: postcode.trim() });
       }
