@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
-import { Text, View, StyleSheet } from 'react-native';
+import { Text, View, Image, StyleSheet } from 'react-native';
 import { Screen, ScreenHeader, Heading, Field, CTA, FooterLink } from '../../components';
 import { useAuthStore } from '../../state/authStore';
 import { colors, spacing, text } from '../../theme';
 import { OtpModal } from './OtpModal';
 
-// PRD §5.2 — sign in is "you@email.com" + a 6-digit code, or guest fallback.
+// v2.3 sign in: brand logo at top → "Paint, delivered fast." → email field.
+// Email-only per PRD §5 MVP decision (SMS OTP is Phase 2).
 
 function isValidContact(v: string): boolean {
   const trimmed = v.trim();
   const email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const phone = /^[\d\s+()-]{9,14}$/;
-  return email.test(trimmed) || (phone.test(trimmed) && trimmed.replace(/\D/g, '').length >= 9);
+  return email.test(trimmed);
 }
 
 export function SignInScreen() {
@@ -49,12 +49,21 @@ export function SignInScreen() {
         }
       >
         <ScreenHeader title="Welcome" rightAction={<View />} />
+        <View style={styles.logoWrap}>
+          <Image
+            source={require('../../../assets/paint-express-logo.png')}
+            style={styles.logo}
+            resizeMode="contain"
+            accessibilityLabel="Paint Express logo"
+          />
+        </View>
         <Heading
-          title="Please Sign Up"
-          sub="We'll remember your address, last order and saved colours. Or continue as a guest."
+          align="center"
+          title="Paint, delivered fast."
+          sub="Save your details once. We'll remember your address, last order and saved colours."
         />
         <Field
-          label="Email or mobile"
+          label="Email"
           required
           placeholder="you@email.com"
           value={contact}
@@ -64,7 +73,7 @@ export function SignInScreen() {
           keyboardType="email-address"
         />
         <Text style={styles.helper}>
-          We'll email you a code. No password to remember.
+          We'll email you a 6-digit code. No password to remember.
         </Text>
         {lastError ? <Text style={styles.error}>{lastError}</Text> : null}
       </Screen>
@@ -75,6 +84,8 @@ export function SignInScreen() {
 }
 
 const styles = StyleSheet.create({
+  logoWrap: { alignItems: 'center', paddingTop: 6, paddingBottom: 4 },
+  logo: { height: 110, width: '74%', maxWidth: 260 },
   helper: {
     ...text.alertBody,
     color: colors.muted,

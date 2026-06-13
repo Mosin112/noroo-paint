@@ -86,6 +86,10 @@ create unique index if not exists saved_colours_user_brand_name_uq
 -- ────────────────────────────────────────────────────────────────────────
 -- Orders + items
 -- ────────────────────────────────────────────────────────────────────────
+do $$ begin
+  create type order_delivery_mode as enum ('delivery', 'pickup');
+exception when duplicate_object then null; end $$;
+
 create table if not exists orders (
   id                       uuid primary key default gen_random_uuid(),
   order_number             text unique not null,
@@ -95,6 +99,8 @@ create table if not exists orders (
   guest_email              text,
   customer_name            text not null,
   customer_phone           text not null,
+  -- v2.3 §6 — separate delivery vs pickup fulfilment.
+  delivery_mode            order_delivery_mode default 'delivery' not null,
   delivery_address_line1   text not null,
   delivery_postcode        text not null,
   delivery_suburb          text,

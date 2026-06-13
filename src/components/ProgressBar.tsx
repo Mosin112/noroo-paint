@@ -26,9 +26,10 @@ const styles = StyleSheet.create({
   },
   seg: {
     flex: 1,
-    height: sizes.progressHeight,
-    borderRadius: radii.progress,
+    height: 4,
+    borderRadius: 999,
     backgroundColor: colors.rule2,
   },
-  segOn: { backgroundColor: colors.accent },
+  // v2.3: progress fill is navy, not red. Red = primary actions only.
+  segOn: { backgroundColor: colors.navy },
 });

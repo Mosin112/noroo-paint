@@ -1,12 +1,13 @@
-import React, { useEffect } from 'react';
-import { View } from 'react-native';
-import { NavigationContainer, DefaultTheme, useNavigation } from '@react-navigation/native';
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { ShoppingCart, ShoppingBag, User } from 'lucide-react-native';
 
 import type { RootStackParamList, MainTabParamList, ShopStackParamList } from './types';
 import { useAuthStore } from '../state';
+import { useBasketStore } from '../state/basketStore';
 import { colors, fontFamily } from '../theme';
 
 import { SignInScreen } from '../screens/auth/SignInScreen';
@@ -37,14 +38,27 @@ function ShopNavigator() {
   );
 }
 
-// The Basket tab redirects into the nested Shop stack so the Basket screen
-// only ever exists in one place (and its in-stack Checkout navigation works).
-function BasketTabRedirect() {
-  const nav = useNavigation<any>();
-  useEffect(() => {
-    nav.navigate('Shop', { screen: 'Basket' });
-  }, [nav]);
+// Placeholder for the Basket tab. The listeners.tabPress in MainTabs swallows
+// every tap and navigates into the Shop stack's Basket screen instead — this
+// view never actually renders. (The previous useEffect-on-mount approach
+// only fired the first time the tab was tapped.)
+function BasketTabPlaceholder() {
   return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
+}
+
+// Cart icon with a count badge — appears whenever the basket is non-empty.
+function BasketTabIcon({ color, size }: { color: string; size: number }) {
+  const count = useBasketStore((s) => s.items.reduce((n, it) => n + it.quantity, 0));
+  return (
+    <View>
+      <ShoppingCart size={size} color={color} />
+      {count > 0 ? (
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{count > 99 ? '99+' : count}</Text>
+        </View>
+      ) : null}
+    </View>
+  );
 }
 
 function MainTabs() {
@@ -52,9 +66,9 @@ function MainTabs() {
     <MainTab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.accent,
+        tabBarActiveTintColor: colors.navy,
         tabBarInactiveTintColor: colors.muted,
-        tabBarLabelStyle: { fontFamily, fontSize: 11 },
+        tabBarLabelStyle: { fontFamily, fontSize: 11, fontWeight: '600' },
         tabBarStyle: { backgroundColor: colors.paper, borderTopColor: colors.rule },
       }}
     >
@@ -65,8 +79,19 @@ function MainTabs() {
       />
       <MainTab.Screen
         name="BasketTab"
-        component={BasketTabRedirect}
-        options={{ tabBarLabel: 'Basket', tabBarIcon: ({ color, size }) => <ShoppingCart size={size} color={color} /> }}
+        component={BasketTabPlaceholder}
+        options={{
+          tabBarLabel: 'Basket',
+          tabBarIcon: ({ color, size }) => <BasketTabIcon color={color} size={size} />,
+        }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            // Every tap navigates into the Shop stack's Basket screen so the
+            // existing checkout flow keeps working without duplicating the route.
+            e.preventDefault();
+            navigation.navigate('Shop', { screen: 'Basket' });
+          },
+        })}
       />
       <MainTab.Screen
         name="Account"
@@ -79,7 +104,14 @@ function MainTabs() {
 
 const navTheme = {
   ...DefaultTheme,
-  colors: { ...DefaultTheme.colors, background: colors.bg, card: colors.paper, text: colors.ink, border: colors.rule, primary: colors.accent },
+  colors: {
+    ...DefaultTheme.colors,
+    background: colors.bg,
+    card: colors.paper,
+    text: colors.ink,
+    border: colors.rule,
+    primary: colors.navy,
+  },
 };
 
 export function RootNavigator() {
@@ -100,3 +132,21 @@ export function RootNavigator() {
     </NavigationContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -10,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 4,
+    backgroundColor: colors.accent,
+    borderWidth: 1.5,
+    borderColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: { color: '#fff', fontSize: 9, fontWeight: '700' },
+});

@@ -3,7 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Check } from 'lucide-react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Screen, ScreenHeader, ProgressBar, CTA } from '../../components';
-import { colors, sizes, spacing, text } from '../../theme';
+import { colors, spacing, text } from '../../theme';
 import type { ShopStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<ShopStackParamList, 'Confirmed'>;
@@ -25,11 +25,11 @@ export function ConfirmedScreen({ route, navigation }: Props) {
       <ScreenHeader title={`Order #${orderNumber}`} />
       <View style={styles.center}>
         <View style={styles.circle}>
-          <Check size={32} color="#fff" strokeWidth={3} />
+          <Check size={36} color="#fff" strokeWidth={3} />
         </View>
         <Text style={styles.headline}>Order sent</Text>
         <Text style={[text.subHeading, styles.subhead]}>
-          Office aims to confirm and dispatch within 1 hour. We'll email you when it's out the door.
+          Your order has been received! Our team will reach out to you for further details.
         </Text>
       </View>
       <Text style={[text.smallNote, { paddingHorizontal: spacing.sectionH - spacing.bodyH, marginTop: 16 }]}>
@@ -42,14 +42,17 @@ export function ConfirmedScreen({ route, navigation }: Props) {
 const styles = StyleSheet.create({
   center: { alignItems: 'center', marginTop: 24, paddingHorizontal: spacing.sectionH - spacing.bodyH },
   circle: {
-    width: sizes.successCircle,
-    height: sizes.successCircle,
-    borderRadius: sizes.successCircle / 2,
+    width: 74, height: 74,
+    borderRadius: 37,
     backgroundColor: colors.good,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
+    // v2.3 §10 — ring halo around the success check.
+    shadowColor: colors.good,
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
   },
-  headline: { fontSize: 18, fontWeight: '600', color: colors.ink },
+  headline: { fontSize: 19, fontWeight: '700', color: colors.navy, letterSpacing: -0.19 },
   subhead: { textAlign: 'center', marginTop: 6 },
 });

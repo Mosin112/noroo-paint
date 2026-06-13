@@ -262,7 +262,15 @@ export type OrderRequest = {
   guest_email?: string;
   customer_name: string;
   customer_phone: string;
-  delivery: { line1: string; suburb?: string; postcode: string };
+  // 'pickup' orders skip the zone check and store the pickup location in
+  // delivery_address_line1 instead of a customer address. Default 'delivery'.
+  delivery_mode?: 'delivery' | 'pickup';
+  delivery: {
+    line1: string;
+    line2?: string;
+    suburb?: string;
+    postcode: string;
+  };
   notes?: string;
   items: {
     product_id: string;
@@ -302,9 +310,13 @@ export async function postOrder(req: OrderRequest): Promise<OrderResponse> {
     if (!p) throw new Error(`Unknown product ${it.product_id}`);
     subtotal += Number(p.price_aud) * it.quantity;
   }
-  const inZone = PERTH_METRO_POSTCODES.has(req.delivery.postcode.trim());
-  if (!inZone) throw new Error('Delivery postcode is outside the Perth-metro zone.');
-  const delivery = subtotal >= 400 ? 0 : 25;
+  const mode = req.delivery_mode ?? 'delivery';
+  // Pickup skips the postcode check entirely + zero delivery fee.
+  if (mode === 'delivery') {
+    const inZone = PERTH_METRO_POSTCODES.has(req.delivery.postcode.trim());
+    if (!inZone) throw new Error('Delivery postcode is outside the Perth-metro zone.');
+  }
+  const delivery = mode === 'pickup' ? 0 : (subtotal >= 400 ? 0 : 25);
   const gst = (subtotal + delivery) * 0.10;
   const total = subtotal + delivery + gst;
 
@@ -325,6 +337,9 @@ export async function postOrder(req: OrderRequest): Promise<OrderResponse> {
       guest_email: user ? null : (req.guest_email ?? null),
       customer_name: req.customer_name,
       customer_phone: req.customer_phone,
+      delivery_mode: mode,
+      // For pickup orders we store the store's location in the address fields
+      // so the order email + dashboard surface useful detail without joining.
       delivery_address_line1: req.delivery.line1,
       delivery_postcode: req.delivery.postcode,
       delivery_suburb: req.delivery.suburb,

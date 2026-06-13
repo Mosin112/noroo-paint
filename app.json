@@ -3,15 +3,15 @@
     "name": "Paint Express",
     "slug": "noroo-paint",
     "scheme": "noroopaint",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/paint-express-logo.png",
     "userInterfaceStyle": "light",
-    "backgroundColor": "#f6f3ec",
+    "backgroundColor": "#F5F7FB",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/paint-express-logo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#f6f3ec"
+      "backgroundColor": "#1F365C"
     },
     "ios": {
       "supportsTablet": true,
@@ -23,15 +23,14 @@
       "versionCode": 1,
       "softwareKeyboardLayoutMode": "pan",
       "adaptiveIcon": {
-        "backgroundColor": "#1c1b18",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
+        "backgroundColor": "#1F365C",
+        "foregroundImage": "./assets/paint-express-logo.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "splash": {
-        "image": "./assets/splash-icon.png",
+        "image": "./assets/paint-express-logo.png",
         "resizeMode": "contain",
-        "backgroundColor": "#f6f3ec"
+        "backgroundColor": "#1F365C"
       },
       "predictiveBackGestureEnabled": false
     },
@@ -43,9 +42,9 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/splash-icon.png",
+          "image": "./assets/paint-express-logo.png",
           "resizeMode": "contain",
-          "backgroundColor": "#f6f3ec"
+          "backgroundColor": "#1F365C"
         }
       ]
     ],

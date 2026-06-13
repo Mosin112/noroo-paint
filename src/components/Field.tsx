@@ -48,15 +48,16 @@ export function Field({
 
 const styles = StyleSheet.create({
   wrap: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.fieldBorder,
-    backgroundColor: '#fff',
-    borderRadius: radii.field,
+    backgroundColor: colors.paper,
+    borderRadius: 12,
     paddingVertical: spacing.fieldV,
     paddingHorizontal: spacing.fieldH,
-    marginBottom: spacing.fieldGap,
-    gap: 4,
+    marginBottom: 9,
+    gap: 3,
   },
+  // Required field gets the red border + red label (design system §5).
   wrapRequired: { borderColor: colors.accent },
   labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
