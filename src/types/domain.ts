@@ -77,15 +77,16 @@ export type ZoneCheck = {
   label: 'Perth metro' | null;
 };
 
-// Maps PRD §6.4 tile labels → product categories.
+// Tile labels mirror the supplier catalogue ("paint express products.xlsx",
+// May 2026) so what customers tap matches the wording on the price sheet.
 export const WHERE_TILES: { label: string; category: ProductCategory }[] = [
-  { label: 'Indoor walls',  category: 'Interior' },
-  { label: 'Outdoor walls', category: 'Exterior' },
-  { label: 'Trim & doors',  category: 'Trim' },
-  { label: 'Ceiling',       category: 'Ceilings' },
-  { label: 'Undercoat',     category: 'Undercoat' },
-  { label: 'All-in-One',    category: 'Premium All-in-One' },
-  { label: 'Accessories',   category: 'Accessories' },
+  { label: 'Interior',           category: 'Interior' },
+  { label: 'Exterior',           category: 'Exterior' },
+  { label: 'Trim',               category: 'Trim' },
+  { label: 'Ceilings',           category: 'Ceilings' },
+  { label: 'Undercoat',          category: 'Undercoat' },
+  { label: 'Premium All-in-One', category: 'Premium All-in-One' },
+  { label: 'Accessories',        category: 'Accessories' },
 ];
 
 export const FINISHES: PaintFinish[] = [

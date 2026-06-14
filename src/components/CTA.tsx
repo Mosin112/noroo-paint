@@ -44,6 +44,11 @@ const styles = StyleSheet.create({
     marginBottom: spacing.ctaMarginV,
   },
   base: {
+    // alignSelf: 'stretch' guarantees the Pressable fills the wrap on every
+    // platform. Without it, on some Android builds the Pressable shrinks to
+    // its <Text> child even though the bg paints full-width, so only the
+    // middle of the button was tappable (real-device repro on v0.2.0).
+    alignSelf: 'stretch',
     paddingVertical: spacing.ctaPad,
     paddingHorizontal: spacing.ctaPad,
     borderRadius: radii.cta,
