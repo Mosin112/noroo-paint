@@ -126,9 +126,16 @@ export function OtpModal({ visible, onClose }: Props) {
     ? `Resend in 0:${String(resendIn).padStart(2, '0')}`
     : 'Resend code';
 
+  // Don't mount the Modal at all when hidden. On some Android builds, an
+  // always-present transparent Modal sometimes keeps an invisible touch
+  // layer in the window hierarchy, which swallows taps on the SignIn
+  // input below — that's the "tap email field, no keyboard" bug from the
+  // real APK. Conditional render avoids the issue entirely.
+  if (!visible) return null;
+
   return (
     <Modal
-      visible={visible}
+      visible
       animationType="slide"
       transparent
       onRequestClose={onClose}
@@ -144,7 +151,9 @@ export function OtpModal({ visible, onClose }: Props) {
         <View style={styles.sheet}>
           <Text style={text.screenH1}>Enter the {CODE_LENGTH}-digit code</Text>
           <Text style={[text.subHeading, styles.sub]}>
-            {email ? `We sent it to ${email}` : 'We sent you a code.'}
+            {email
+              ? `We've sent a verification code to ${email}`
+              : "We've sent you a verification code."}
           </Text>
 
           <Animated.View style={[styles.boxesRow, { transform: [{ translateX: shake }] }]}>

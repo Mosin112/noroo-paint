@@ -9,9 +9,9 @@
     "userInterfaceStyle": "light",
     "backgroundColor": "#F5F7FB",
     "splash": {
-      "image": "./assets/paint-express-logo.png",
+      "image": "./assets/noroo-paint-logo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#1F365C"
+      "backgroundColor": "#FFFFFF"
     },
     "ios": {
       "supportsTablet": true,
@@ -28,9 +28,9 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "splash": {
-        "image": "./assets/paint-express-logo.png",
+        "image": "./assets/noroo-paint-logo.png",
         "resizeMode": "contain",
-        "backgroundColor": "#1F365C"
+        "backgroundColor": "#FFFFFF"
       },
       "predictiveBackGestureEnabled": false
     },
@@ -42,9 +42,9 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/paint-express-logo.png",
+          "image": "./assets/noroo-paint-logo.png",
           "resizeMode": "contain",
-          "backgroundColor": "#1F365C"
+          "backgroundColor": "#FFFFFF"
         }
       ]
     ],

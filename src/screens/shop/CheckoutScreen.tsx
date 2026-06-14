@@ -96,13 +96,17 @@ export function CheckoutScreen({ navigation }: Props) {
     { key: 'Total', value: `$${totals.total.toFixed(2)}`, emphasis: 'total' },
   ]);
 
-  // Validation — different rules for pickup vs delivery.
+  // Validation — different rules for pickup vs delivery. We deliberately
+  // DON'T require `inZone` here: the zone check is async and the form
+  // would block while it resolved (and worse, it sometimes resolved
+  // wrong if the user typed fast). postOrder hits the server-side check
+  // and surfaces an error if the postcode is out of zone — the inline
+  // red badge already warns the user before they tap.
   const phoneDigits = phone.replace(/\D/g, '');
   const baseValid = name.trim().length >= 2 && phoneDigits.length >= 9 && items.length > 0;
   const deliveryValid = line1.trim().length >= 5 &&
     suburb.trim().length >= 2 &&
-    /^\d{4}$/.test(postcode.trim()) &&
-    inZone;
+    /^\d{4}$/.test(postcode.trim());
   const formValid = baseValid && (mode === 'pickup' ? true : deliveryValid);
 
   const placeOrder = async () => {

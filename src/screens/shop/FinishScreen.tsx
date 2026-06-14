@@ -72,7 +72,7 @@ export function FinishScreen({ route, navigation }: Props) {
         sub={
           isAccessory
             ? 'Tap an item to add it to your basket.'
-            : showFinishChips ? 'Pick a finish, then a size.' : 'Pick a size.'
+            : 'Pick a finish, then pick a size.'
         }
       />
 

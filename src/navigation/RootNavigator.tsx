@@ -76,6 +76,18 @@ function MainTabs() {
         name="Shop"
         component={ShopNavigator}
         options={{ tabBarLabel: 'Shop', tabBarIcon: ({ color, size }) => <ShoppingBag size={size} color={color} /> }}
+        listeners={() => ({
+          tabPress: (e) => {
+            // Guests get bumped back to SignIn when they try to enter the
+            // shop. Signing out flips auth.mode → 'signed-out' which causes
+            // RootNavigator to present the SignIn modal. They can re-enter
+            // as guest from there, but the tab acts as a sign-up prompt.
+            if (useAuthStore.getState().mode === 'guest') {
+              e.preventDefault();
+              void useAuthStore.getState().signOut();
+            }
+          },
+        })}
       />
       <MainTab.Screen
         name="BasketTab"
