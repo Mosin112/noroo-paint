@@ -47,19 +47,25 @@ export function FinishScreen({ route, navigation }: Props) {
     return ordered;
   }, [all, isAccessory]);
 
+  // Some categories (Undercoat) have a single product with no finish — every
+  // SKU has finish: null. Treat them like accessories: no chip row, just
+  // show the size variants directly.
+  const hasFinishes = availableFinishes.length > 0;
+  const skipFinishFilter = isAccessory || !hasFinishes;
+
   // Pick the first available finish whenever the category's data lands.
   const [finish, setFinish] = useState<PaintFinish | null>(null);
   useEffect(() => {
-    if (!isAccessory && availableFinishes.length && !availableFinishes.includes(finish as PaintFinish)) {
+    if (hasFinishes && !availableFinishes.includes(finish as PaintFinish)) {
       setFinish(availableFinishes[0]);
     }
-  }, [availableFinishes, finish, isAccessory]);
+  }, [availableFinishes, finish, hasFinishes]);
 
   const visibleProducts = useMemo(() => {
-    if (isAccessory) return all;
+    if (skipFinishFilter) return all;
     if (!finish) return [];
     return all.filter((p) => p.finish === finish);
-  }, [all, finish, isAccessory]);
+  }, [all, finish, skipFinishFilter]);
 
   const showFinishChips = !isAccessory && availableFinishes.length > 1;
 
@@ -93,9 +99,11 @@ export function FinishScreen({ route, navigation }: Props) {
       ) : (
         <View>
           {visibleProducts.map((p) => {
-            const title = isAccessory
-              ? p.name
-              : `${meta.short || p.name} ${p.finish ?? ''} · ${p.tin_size ?? ''}`.trim();
+            // For finished paint: "Multi Primer Semi Gloss · 4L". For
+            // finish-less SKUs (Undercoat): "Multi Primer · 4L" — no
+            // empty finish slot leaving a double space.
+            const titleHead = [meta.short || p.name, p.finish].filter(Boolean).join(' ');
+            const title = isAccessory ? p.name : `${titleHead} · ${p.tin_size ?? ''}`;
             const subtitle = isAccessory
               ? 'Accessory'
               : `${whereLabel} · ${p.tinting_base ?? p.finish ?? ''}`;
