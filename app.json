@@ -5,7 +5,7 @@
     "scheme": "noroopaint",
     "version": "0.2.0",
     "orientation": "portrait",
-    "icon": "./assets/paint-express-logo.png",
+    "icon": "./assets/paint-express-icon.png",
     "userInterfaceStyle": "light",
     "backgroundColor": "#F5F7FB",
     "splash": {
@@ -24,7 +24,7 @@
       "softwareKeyboardLayoutMode": "pan",
       "adaptiveIcon": {
         "backgroundColor": "#1F365C",
-        "foregroundImage": "./assets/paint-express-logo.png",
+        "foregroundImage": "./assets/paint-express-adaptive-fg.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "splash": {
