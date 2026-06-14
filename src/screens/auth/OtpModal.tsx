@@ -183,7 +183,7 @@ export function OtpModal({ visible, onClose }: Props) {
             </Text>
           </Pressable>
 
-          <CTA label="Verify" disabled={!canSubmit} loading={submitting} onPress={submit} />
+          <CTA label="Verify & continue" disabled={!canSubmit} loading={submitting} onPress={submit} />
         </View>
       </KeyboardAvoidingView>
     </Modal>

@@ -20,16 +20,17 @@ export function SavedColourChip({ brand, colourName, hot, onPress }: Props) {
 
 const styles = StyleSheet.create({
   base: {
-    paddingVertical: 5,
-    paddingHorizontal: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 11,
     borderRadius: radii.chip,
-    backgroundColor: colors.rule2,
-    borderWidth: 1,
-    borderColor: 'transparent',
-    marginRight: 4,
-    marginBottom: 4,
+    backgroundColor: colors.paper,
+    borderWidth: 1.5,
+    borderColor: colors.rule,
+    marginRight: 5,
+    marginBottom: 5,
   },
-  hot: { backgroundColor: colors.accent, borderColor: colors.accent },
-  text: { fontSize: 11, color: colors.ink2 },
+  // Hot (currently-applied) saved colour uses navy per design system §5.
+  hot: { backgroundColor: colors.navy, borderColor: colors.navy },
+  text: { fontSize: 11, color: colors.ink2, fontWeight: '600' },
   hotText: { color: '#fff' },
 });

@@ -23,13 +23,15 @@ export function ChipRow({ children }: { children: React.ReactNode }) {
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
   base: {
-    paddingVertical: spacing.chipV,
-    paddingHorizontal: spacing.chipH,
+    paddingVertical: spacing.chipV + 1,
+    paddingHorizontal: spacing.chipH + 1,
     borderRadius: radii.chip,
-    backgroundColor: colors.rule2,
-    borderWidth: 1,
-    borderColor: 'transparent',
+    backgroundColor: colors.paper,
+    borderWidth: 1.5,
+    borderColor: colors.rule,
   },
-  selected: { backgroundColor: colors.accent, borderColor: colors.accent },
+  // Selected chip in v2.3: navy fill, white text, navy border. Red is
+  // reserved for primary CTAs only.
+  selected: { backgroundColor: colors.navy, borderColor: colors.navy },
   selectedText: { color: '#fff' },
 });

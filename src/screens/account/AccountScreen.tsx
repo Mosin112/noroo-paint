@@ -4,7 +4,7 @@ import { Check, X } from 'lucide-react-native';
 import { Screen, ScreenHeader, Heading, Field, CTA, SavedColourChip } from '../../components';
 import { useAuthStore, useSavedColoursStore } from '../../state';
 import { useUserStore } from '../../state/userStore';
-import { deleteAccount } from '../../api/client';
+import { deleteAccount, listMyOrders, type OrderSummary } from '../../api/client';
 import { colors, radii, spacing, text } from '../../theme';
 
 // Joins "<address line>" and "<postcode>" the way the Account UI presents.
@@ -54,6 +54,18 @@ export function AccountScreen() {
   const [contactSaving, setContactSaving] = useState(false);
   const [addressJustSaved, setAddressJustSaved] = useState(false);
   const [contactJustSaved, setContactJustSaved] = useState(false);
+
+  // Recent orders for the signed-in user. Fetched lazily on mount; guest
+  // mode never sees orders here (no Supabase session = nothing to scope to).
+  const [orders, setOrders] = useState<OrderSummary[] | null>(null);
+  useEffect(() => {
+    if (isGuest) { setOrders([]); return; }
+    let cancelled = false;
+    listMyOrders(10)
+      .then((rows) => { if (!cancelled) setOrders(rows); })
+      .catch(() => { if (!cancelled) setOrders([]); });
+    return () => { cancelled = true; };
+  }, [isGuest, profile?.id]);
 
   // Sync from the store whenever it (re)hydrates. No prototype fallback —
   // guest mode also starts empty so users type their own details.
@@ -236,17 +248,58 @@ export function AccountScreen() {
       </View>
 
       <Text style={[text.fieldLabel, { marginTop: 18, marginBottom: 6 }]}>RECENT ORDERS</Text>
-      <View style={styles.orderRow}>
-        <Text style={text.rowSubtitle}>No orders yet — they'll appear here after checkout.</Text>
-      </View>
+      {orders === null ? (
+        <View style={styles.orderRow}>
+          <ActivityIndicator color={colors.navy} />
+        </View>
+      ) : orders.length === 0 ? (
+        <View style={styles.orderRow}>
+          <Text style={text.rowSubtitle}>No orders yet — they'll appear here after checkout.</Text>
+        </View>
+      ) : (
+        <View style={styles.orderList}>
+          {orders.map((o) => (
+            <View key={o.id} style={styles.orderItem}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.orderNumber}>#{o.order_number}</Text>
+                <Text style={styles.orderMeta}>
+                  {formatOrderDate(o.created_at)} · {o.delivery_mode === 'pickup' ? 'Pickup' : 'Delivery'}
+                </Text>
+              </View>
+              <Text style={styles.orderTotal}>${Number(o.total_aud).toFixed(2)}</Text>
+            </View>
+          ))}
+        </View>
+      )}
     </Screen>
   );
+}
+
+// "22 May" style — keeps the row compact.
+function formatOrderDate(iso: string): string {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+  } catch {
+    return iso.slice(0, 10);
+  }
 }
 
 const styles = StyleSheet.create({
   savedRow: { flexDirection: 'row', flexWrap: 'wrap' },
   savedItem: { flexDirection: 'row', alignItems: 'center', marginRight: 6 },
   x: { padding: 4, marginLeft: -8, marginRight: 8 },
+  orderList: { gap: 0 },
+  orderItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.rule2,
+  },
+  orderNumber: { fontSize: 13, fontWeight: '700', color: colors.ink },
+  orderMeta: { fontSize: 11, color: colors.muted, marginTop: 2 },
+  orderTotal: { fontSize: 13, fontWeight: '700', color: colors.ink },
   orderRow: {
     borderWidth: 1,
     borderColor: colors.fieldBorder,

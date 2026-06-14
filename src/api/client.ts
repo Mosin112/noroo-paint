@@ -262,7 +262,15 @@ export type OrderRequest = {
   guest_email?: string;
   customer_name: string;
   customer_phone: string;
-  delivery: { line1: string; suburb?: string; postcode: string };
+  // 'pickup' orders skip the zone check and store the pickup location in
+  // delivery_address_line1 instead of a customer address. Default 'delivery'.
+  delivery_mode?: 'delivery' | 'pickup';
+  delivery: {
+    line1: string;
+    line2?: string;
+    suburb?: string;
+    postcode: string;
+  };
   notes?: string;
   items: {
     product_id: string;
@@ -277,14 +285,34 @@ export type OrderResponse = {
   order_number: string;
 };
 
-export async function postOrder(req: OrderRequest): Promise<OrderResponse> {
-  const d = new Date();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  const orderPrefix = `${mm}${dd}`;
+export type OrderSummary = {
+  id: string;
+  order_number: string;
+  total_aud: number;
+  created_at: string;
+  delivery_mode: 'delivery' | 'pickup';
+};
 
+// Pulls the signed-in user's recent orders for the Account screen. RLS makes
+// sure they only see their own rows. Returns an empty array for guests or
+// when the user is unauthenticated.
+export async function listMyOrders(limit = 10): Promise<OrderSummary[]> {
+  if (USE_SEED) return [];
+  const { data, error } = await supabase!
+    .from('orders')
+    .select('id, order_number, total_aud, created_at, delivery_mode')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as OrderSummary[];
+}
+
+export async function postOrder(req: OrderRequest): Promise<OrderResponse> {
   if (USE_SEED) {
-    return { id: `mock-${Date.now()}`, order_number: `${orderPrefix}-A` };
+    const d = new Date();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return { id: `mock-${Date.now()}`, order_number: `${mm}${dd}-A` };
   }
 
   // Fetch product prices so we never trust client-side totals (PRD §11.1).
@@ -302,29 +330,31 @@ export async function postOrder(req: OrderRequest): Promise<OrderResponse> {
     if (!p) throw new Error(`Unknown product ${it.product_id}`);
     subtotal += Number(p.price_aud) * it.quantity;
   }
-  const inZone = PERTH_METRO_POSTCODES.has(req.delivery.postcode.trim());
-  if (!inZone) throw new Error('Delivery postcode is outside the Perth-metro zone.');
-  const delivery = subtotal >= 400 ? 0 : 25;
+  const mode = req.delivery_mode ?? 'delivery';
+  // Pickup skips the postcode check entirely + zero delivery fee.
+  if (mode === 'delivery') {
+    const inZone = PERTH_METRO_POSTCODES.has(req.delivery.postcode.trim());
+    if (!inZone) throw new Error('Delivery postcode is outside the Perth-metro zone.');
+  }
+  const delivery = mode === 'pickup' ? 0 : (subtotal >= 400 ? 0 : 25);
   const gst = (subtotal + delivery) * 0.10;
   const total = subtotal + delivery + gst;
 
-  // Next-letter suffix for today's orders (A, B, …, Z, AA, AB, …).
-  const { data: todays, error: cErr } = await supabase!
-    .from('orders')
-    .select('order_number')
-    .like('order_number', `${orderPrefix}-%`);
-  if (cErr) throw cErr;
-  const order_number = `${orderPrefix}-${nextSuffix(todays?.length ?? 0)}`;
-
+  // order_number is assigned by the BEFORE INSERT trigger in migration 005
+  // (security definer, sees all orders). We let the DB pick the next letter
+  // and read it back via .select() — counting client-side would only see
+  // this user's orders under RLS and collide on the unique constraint.
   const { data: { user } } = await supabase!.auth.getUser();
   const { data: order, error: oErr } = await supabase!
     .from('orders')
     .insert({
-      order_number,
       user_id: user?.id ?? null,
       guest_email: user ? null : (req.guest_email ?? null),
       customer_name: req.customer_name,
       customer_phone: req.customer_phone,
+      delivery_mode: mode,
+      // For pickup orders we store the store's location in the address fields
+      // so the order email + dashboard surface useful detail without joining.
       delivery_address_line1: req.delivery.line1,
       delivery_postcode: req.delivery.postcode,
       delivery_suburb: req.delivery.suburb,
@@ -359,17 +389,6 @@ export async function postOrder(req: OrderRequest): Promise<OrderResponse> {
   if (iErr) throw iErr;
 
   return { id: order.id, order_number: order.order_number };
-}
-
-function nextSuffix(count: number): string {
-  // A..Z then AA..AZ, BA..BZ, ... — base-26 with no zero digit.
-  let n = count;
-  let out = '';
-  do {
-    out = String.fromCharCode(65 + (n % 26)) + out;
-    n = Math.floor(n / 26) - 1;
-  } while (n >= 0);
-  return out;
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -438,4 +457,47 @@ export async function deleteAccount(): Promise<void> {
   const { error } = await supabase!.functions.invoke('delete-account');
   if (error) throw error;
   await supabase!.auth.signOut();
+}
+
+// Order notification email — fires the send-order-email Edge Function which
+// uses Resend to deliver a branded HTML/text email to the fulfilment team.
+// Payload mirrors the Confirmed screen so the recipient sees the same detail.
+//
+// Best-effort: errors are propagated for the caller to log/swallow. The order
+// is already in Supabase before we get here, so a failure here just means
+// nobody gets pinged for that one order.
+export type OrderEmailPayload = {
+  orderNumber: string;
+  mode: 'delivery' | 'pickup';
+  customerName: string;
+  customerPhone: string;
+  customerEmail?: string | null;
+  address?: { line1: string; line2?: string; suburb: string; postcode: string };
+  pickupName?: string;
+  pickupAddress?: string;
+  pickupHours?: string;
+  notes?: string;
+  items: Array<{
+    name: string;
+    tin_size?: string | null;
+    finish?: string | null;
+    brand?: string | null;
+    colour_name?: string | null;
+    quantity: number;
+    unitPrice: number;
+    lineTotal: number;
+  }>;
+  subtotal: number;
+  delivery: number;
+  gst: number;
+  total: number;
+};
+
+export async function sendOrderEmail(order: OrderEmailPayload): Promise<void> {
+  if (USE_SEED) return;
+  // The Edge Function reads the recipient from its ORDER_NOTIFICATION_EMAIL
+  // secret so we don't ship it to the client. Caller's session JWT proves
+  // they're authenticated.
+  const { error } = await supabase!.functions.invoke('send-order-email', { body: order });
+  if (error) throw error;
 }

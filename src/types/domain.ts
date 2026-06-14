@@ -53,11 +53,24 @@ export type BasketItem = {
 
 export type DeliveryAddress = {
   line1: string;
+  line2?: string;
   suburb?: string;
   postcode: string;
   state?: string;
   country?: string;
 };
+
+// v2.3 §6 — every order is either delivered to the customer or picked up
+// from the store. `pickup` mode skips address validation entirely.
+export type DeliveryMode = 'delivery' | 'pickup';
+
+// Single hardcoded store location for MVP. Move to a Supabase table when
+// we need to support multiple stores.
+export const PICKUP_LOCATION = {
+  name: 'Synergy Building Supplies',
+  address: '236–238 Planet St, Welshpool WA 6106',
+  hours: 'Mon–Fri 7am – 4pm',
+} as const;
 
 export type ZoneCheck = {
   in_zone: boolean;
@@ -78,6 +91,47 @@ export const WHERE_TILES: { label: string; category: ProductCategory }[] = [
 export const FINISHES: PaintFinish[] = [
   'Matt', 'Low Sheen', 'Semi Gloss', 'Gloss', 'Ultra Flat', 'Eggshell',
 ];
+
+// v2.3 §8 — display metadata per category. Short name + range tag drive
+// the product banner on the Finish screen; the full name is shown below.
+type RangeMeta = { short: string; tag: string; full: string };
+export const RANGE_META: Record<ProductCategory, RangeMeta> = {
+  Interior: {
+    short: 'Norutone',
+    tag: 'Premium Interior',
+    full: 'Noroo Norutone Premium Interior Paint',
+  },
+  Exterior: {
+    short: 'Norusol',
+    tag: 'Premium Exterior',
+    full: 'Noroo Norusol Premium Exterior Paint',
+  },
+  Ceilings: {
+    short: 'Norutone Ceiling',
+    tag: 'Premium Ultra Flat',
+    full: 'Noroo Norutone Ceiling',
+  },
+  Trim: {
+    short: 'Multi Plus',
+    tag: 'Acrylic Trim',
+    full: 'Noroo Multi Plus Premium Acrylic Trim',
+  },
+  Undercoat: {
+    short: 'Multi Primer',
+    tag: 'Sealer Undercoat',
+    full: 'Noroo Multi Primer Acrylic Sealer Undercoat',
+  },
+  'Premium All-in-One': {
+    short: 'All Cover',
+    tag: 'Ultra Premium',
+    full: 'Noroo All Cover Ultra Premium All-in-One',
+  },
+  Accessories: {
+    short: '',
+    tag: 'Brushes · rollers',
+    full: '',
+  },
+};
 
 export const TIN_SIZES: TinSize[] = ['1L', '4L', '10L'];
 

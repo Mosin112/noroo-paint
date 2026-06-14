@@ -48,21 +48,23 @@ export const SEED_PRODUCTS: Product[] = [
   { id: id(), category: 'Accessories', name: 'Cutter Brush 38mm',    finish: null, tin_size: null, tinting_base: null, price_aud: 12, swatch_hex: '#fafaf7', is_active: true },
 ];
 
-// Perth metro postcodes — PRD §16 says final list to be supplied at kick-off.
-// This is a seeded sample so out-of-zone logic is testable end-to-end.
+// Perth metro postcodes — full WA coverage list supplied by ops in
+// wa-coverage.csv (89 unique postcodes; 275 suburbs collapsed to their
+// codes, both "Perth" and "Added" zones treated as in-zone).
+//
+// To refresh from a new CSV:
+//   awk -F, 'NR>1 {gsub(/"/,"",$2); print $2}' wa-coverage.csv | sort -un
 export const PERTH_METRO_POSTCODES = new Set<string>([
-  // Yanchep / north
-  '6035', '6036', '6037', '6038',
-  // Joondalup band
-  '6027', '6028', '6029', '6030', '6031', '6064', '6065',
-  // Inner Perth
   '6000', '6003', '6004', '6005', '6006', '6007', '6008', '6009',
-  '6050', '6051', '6052', '6053', '6054', '6055', '6056',
-  '6100', '6101', '6102', '6103', '6104', '6105', '6106', '6107',
-  '6148', '6149', '6150', '6151', '6152', '6153', '6154', '6155',
-  '6156', '6157', '6158', '6159', '6160', '6161', '6162', '6163',
-  '6164', '6165', '6166', '6167', '6168', '6169', '6170', '6171',
-  '6172', '6173', '6174', '6175', '6176', '6177',
-  // Rockingham / Mandurah
-  '6210', '6211',
+  '6010', '6011', '6012', '6014', '6015', '6016', '6017', '6018',
+  '6019', '6020', '6021', '6022', '6023', '6024', '6025', '6026',
+  '6027', '6028', '6029', '6030', '6031', '6032', '6033', '6034',
+  '6036', '6038', '6050', '6051', '6052', '6053', '6054', '6055',
+  '6056', '6057', '6058', '6059', '6060', '6061', '6062', '6063',
+  '6064', '6065', '6066', '6067', '6068', '6069', '6076', '6077',
+  '6079', '6090', '6100', '6101', '6102', '6103', '6104', '6105',
+  '6106', '6107', '6108', '6109', '6110', '6111', '6112', '6122',
+  '6147', '6148', '6149', '6150', '6151', '6152', '6153', '6154',
+  '6155', '6156', '6157', '6158', '6159', '6160', '6162', '6163',
+  '6164', '6166',
 ]);

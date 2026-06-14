@@ -10,6 +10,9 @@ type Props = {
   loading?: boolean;
 };
 
+// Primary CTA: red, white text. Ghost CTA: white bg, navy border + text.
+// Both follow the v2.3 design system §5.
+
 export function CTA({ label, onPress, variant = 'primary', disabled, loading }: Props) {
   const isGhost = variant === 'ghost';
   return (
@@ -21,13 +24,13 @@ export function CTA({ label, onPress, variant = 'primary', disabled, loading }: 
           styles.base,
           isGhost ? styles.ghost : styles.primary,
           (disabled || loading) && styles.disabled,
-          pressed && !disabled && !loading && styles.pressed,
+          pressed && !disabled && !loading && (isGhost ? styles.ghostPressed : styles.primaryPressed),
         ]}
       >
         {loading ? (
-          <ActivityIndicator color={isGhost ? colors.accent : '#fff'} />
+          <ActivityIndicator color={isGhost ? colors.navy : '#fff'} />
         ) : (
-          <Text style={[text.cta, isGhost && { color: colors.accent }]}>{label}</Text>
+          <Text style={isGhost ? text.ctaGhost : text.cta}>{label}</Text>
         )}
       </Pressable>
     </View>
@@ -48,7 +51,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   primary: { backgroundColor: colors.accent },
-  ghost: { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.accent },
+  primaryPressed: { backgroundColor: colors.accentPress },
+  ghost: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: colors.rule },
+  ghostPressed: { borderColor: colors.navy, backgroundColor: colors.tint },
   disabled: { opacity: 0.4 },
-  pressed: { opacity: 0.9 },
 });

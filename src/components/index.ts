@@ -9,6 +9,8 @@ export { QtyStepper } from './QtyStepper';
 export { ScreenHeader } from './ScreenHeader';
 export { Screen, ScreenSection } from './Screen';
 export { Heading } from './Heading';
+export { ProductBanner } from './ProductBanner';
+export { SegmentControl } from './SegmentControl';
 export { Summary } from './Summary';
 export type { SummaryLine } from './Summary';
 export { SavedColourChip } from './SavedColourChip';

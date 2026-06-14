@@ -15,10 +15,12 @@ export function ColourScreen({ route, navigation }: Props) {
   const { product } = route.params;
   const isAccessory = product.category === 'Accessories';
 
+  // Always start blank. White-base products used to auto-fill "White" but
+  // that pre-filled value confused customers; they now type their own.
   const [brand, setBrand] = useState('');
   const [colourName, setColourName] = useState('');
   const [notes, setNotes] = useState('');
-  const [qty, setQty] = useState(4);
+  const [qty, setQty] = useState(1);
   const [activeSaved, setActiveSaved] = useState<string | null>(null);
 
   const savedColours = useSavedColoursStore((s) => s.colours);
@@ -37,7 +39,7 @@ export function ColourScreen({ route, navigation }: Props) {
     ]).start();
   };
 
-  // Accessories skip the form; auto-fill the screen for an add-to-basket confirmation.
+  // Accessories: clear the colour state — they don't surface this UI anyway.
   useEffect(() => {
     if (isAccessory) {
       setBrand('');
@@ -65,15 +67,20 @@ export function ColourScreen({ route, navigation }: Props) {
     navigation.navigate('Basket');
   };
 
+  // v2.3 — same prompt for all paint products (no more white-only special copy).
+  const subCopy = isAccessory
+    ? 'No tinting needed for accessories.'
+    : 'Please be specific. As much information as possible ensures a correct tint.';
+
   return (
     <Screen
-      footer={<CTA label={isAccessory ? 'Add to basket' : 'Continue to checkout'} onPress={handleContinue} disabled={!canContinue} />}
+      footer={<CTA label="Add to basket" onPress={handleContinue} disabled={!canContinue} />}
     >
       <ProgressBar step={3} totalSteps={5} />
-      <ScreenHeader title="Colour" onBack={() => navigation.goBack()} />
+      <ScreenHeader title="Colour" onBack={() => navigation.goBack()} showCart />
       <Heading
-        title={isAccessory ? 'Confirm accessory' : 'Write the colour'}
-        sub={isAccessory ? 'No tinting needed for accessories.' : 'Be specific — mistakes cost a tin. Brand optional, name required.'}
+        title={isAccessory ? 'Confirm accessory' : 'Choose your colour'}
+        sub={subCopy}
       />
 
       {!isAccessory && (
@@ -81,7 +88,7 @@ export function ColourScreen({ route, navigation }: Props) {
           <Field
             label="Brand (optional)"
             value={brand}
-            onChangeText={setBrand}
+            onChangeText={(v) => { setBrand(v); setActiveSaved(null); }}
             placeholder="e.g. Dulux"
           />
           <Animated.View style={{ transform: [{ translateX: shake }] }}>
@@ -89,22 +96,12 @@ export function ColourScreen({ route, navigation }: Props) {
               label="Colour name"
               required
               value={colourName}
-              onChangeText={setColourName}
+              onChangeText={(v) => { setColourName(v); setActiveSaved(null); }}
               placeholder="e.g. Natural White"
             />
           </Animated.View>
         </>
       )}
-
-      <Field
-        label="Order notes (optional)"
-        value={notes}
-        onChangeText={setNotes}
-        placeholder="Anything else the office should know"
-        multiline
-        numberOfLines={3}
-        style={{ minHeight: 60, textAlignVertical: 'top' }}
-      />
 
       {!isAccessory && savedColours.length > 0 && (
         <View style={styles.savedWrap}>
@@ -127,6 +124,16 @@ export function ColourScreen({ route, navigation }: Props) {
         </View>
       )}
 
+      <Field
+        label="Order notes (optional)"
+        value={notes}
+        onChangeText={setNotes}
+        placeholder="Add any product or tinting notes here for our team"
+        multiline
+        numberOfLines={3}
+        style={{ minHeight: 60, textAlignVertical: 'top' }}
+      />
+
       <View style={styles.qtyRow}>
         <Text style={text.fieldLabel}>QUANTITY</Text>
         <QtyStepper value={qty} onChange={setQty} />
@@ -136,18 +143,18 @@ export function ColourScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  savedWrap: { marginTop: 10 },
+  savedWrap: { marginTop: 6, marginBottom: 4 },
   savedChips: { flexDirection: 'row', flexWrap: 'wrap' },
   qtyRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.fieldBorder,
     borderRadius: radii.field,
     paddingVertical: 8,
     paddingHorizontal: 12,
-    marginTop: 10,
+    marginTop: 6,
     marginBottom: spacing.fieldGap,
     backgroundColor: '#fff',
   },
