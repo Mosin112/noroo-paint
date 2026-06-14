@@ -32,7 +32,7 @@ export function WhereScreen({ navigation }: Props) {
     <Screen>
       <ProgressBar step={1} totalSteps={5} />
       <ScreenHeader title="New order" showCart />
-      <Heading title="Choose a category of paint" sub="Pick what you're painting." />
+      <Heading title="Choose a category of paint" sub="Pick a category of paints to see all products in it." />
 
       <View style={styles.grid}>
         {standardTiles.map((t) => {
