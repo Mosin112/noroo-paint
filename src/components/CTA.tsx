@@ -12,19 +12,30 @@ type Props = {
 
 // Primary CTA: red, white text. Ghost CTA: white bg, navy border + text.
 // Both follow the v2.3 design system §5.
+//
+// Why this shape:
+//   - <View> wrap owns the *padding* (not margin) — the Pressable's box
+//     is naturally inset by ctaMarginH on each side without overflow.
+//   - <Pressable> uses alignSelf: 'stretch' so it fills the wrap's
+//     content area edge-to-edge. RN-web previously collapsed Pressable's
+//     hit region to its <Text> child even with the bg painted full-width;
+//     using padding-on-parent + alignSelf stretch keeps the layout box
+//     and the touch region the same size on every platform.
 
 export function CTA({ label, onPress, variant = 'primary', disabled, loading }: Props) {
   const isGhost = variant === 'ghost';
+  const isInactive = disabled || loading;
   return (
     <View style={styles.wrap}>
       <Pressable
         onPress={onPress}
-        disabled={disabled || loading}
+        disabled={isInactive}
+        android_ripple={isInactive ? undefined : { color: isGhost ? colors.tint : colors.accentPress }}
         style={({ pressed }) => [
           styles.base,
           isGhost ? styles.ghost : styles.primary,
-          (disabled || loading) && styles.disabled,
-          pressed && !disabled && !loading && (isGhost ? styles.ghostPressed : styles.primaryPressed),
+          isInactive && styles.disabled,
+          pressed && !isInactive && (isGhost ? styles.ghostPressed : styles.primaryPressed),
         ]}
       >
         {loading ? (
@@ -39,15 +50,11 @@ export function CTA({ label, onPress, variant = 'primary', disabled, loading }: 
 
 const styles = StyleSheet.create({
   wrap: {
-    marginTop: spacing.ctaMarginTop,
-    marginHorizontal: spacing.ctaMarginH,
-    marginBottom: spacing.ctaMarginV,
+    paddingTop: spacing.ctaMarginTop,
+    paddingHorizontal: spacing.ctaMarginH,
+    paddingBottom: spacing.ctaMarginV,
   },
   base: {
-    // alignSelf: 'stretch' guarantees the Pressable fills the wrap on every
-    // platform. Without it, on some Android builds the Pressable shrinks to
-    // its <Text> child even though the bg paints full-width, so only the
-    // middle of the button was tappable (real-device repro on v0.2.0).
     alignSelf: 'stretch',
     paddingVertical: spacing.ctaPad,
     paddingHorizontal: spacing.ctaPad,

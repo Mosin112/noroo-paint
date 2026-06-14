@@ -11,11 +11,16 @@ import { colors } from '../theme';
 // wordmark in white/red, "Paint, delivered fast." tagline, three pulsing
 // dots underneath.
 
-const DURATION_MS = 1700;
-const FADE_MS = 400;
+// Visible time before the fade kicks in, then a longer + softer fade so
+// the navy doesn't snap to the cool-grey SignIn bg.
+const HOLD_MS = 1500;
+const FADE_MS = 650;
 
 export function AppSplash({ onDone }: { onDone: () => void }) {
   const fade = useRef(new Animated.Value(1)).current;
+  // Tiny scale-down on the card during the fade — feels like the splash
+  // is gently receding rather than just vanishing.
+  const cardScale = useRef(new Animated.Value(1)).current;
   // Three dots that pulse out-of-phase.
   const dot1 = useRef(new Animated.Value(0.3)).current;
   const dot2 = useRef(new Animated.Value(0.3)).current;
@@ -37,32 +42,41 @@ export function AppSplash({ onDone }: { onDone: () => void }) {
     a.start(); b.start(); c.start();
 
     const t = setTimeout(() => {
-      Animated.timing(fade, {
-        toValue: 0,
-        duration: FADE_MS,
-        easing: Easing.out(Easing.ease),
-        useNativeDriver: true,
-      }).start(({ finished }) => {
+      Animated.parallel([
+        Animated.timing(fade, {
+          toValue: 0,
+          duration: FADE_MS,
+          // Material-style out curve — slow start, accelerates, soft tail.
+          easing: Easing.bezier(0.4, 0.0, 0.2, 1),
+          useNativeDriver: true,
+        }),
+        Animated.timing(cardScale, {
+          toValue: 0.94,
+          duration: FADE_MS,
+          easing: Easing.bezier(0.4, 0.0, 0.2, 1),
+          useNativeDriver: true,
+        }),
+      ]).start(({ finished }) => {
         if (finished) onDone();
       });
-    }, DURATION_MS);
+    }, HOLD_MS);
 
     return () => {
       clearTimeout(t);
       a.stop(); b.stop(); c.stop();
     };
-  }, [dot1, dot2, dot3, fade, onDone]);
+  }, [cardScale, dot1, dot2, dot3, fade, onDone]);
 
   return (
     <Animated.View style={[styles.wrap, { opacity: fade }]} pointerEvents="none">
-      <View style={styles.card}>
+      <Animated.View style={[styles.card, { transform: [{ scale: cardScale }] }]}>
         <Image
           source={require('../../assets/noroo-paint-logo.png')}
           style={styles.logo}
           resizeMode="contain"
           accessibilityLabel="Noroo Paint"
         />
-      </View>
+      </Animated.View>
       <View style={styles.wordmarkRow}>
         <Text style={[styles.wordmark, styles.wordmarkPaint]}>PAINT</Text>
         <Text style={[styles.wordmark, styles.wordmarkExpress]}> EXPRESS</Text>

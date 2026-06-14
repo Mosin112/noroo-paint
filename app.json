@@ -28,9 +28,9 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "splash": {
-        "image": "./assets/noroo-paint-logo.png",
-        "resizeMode": "contain",
-        "backgroundColor": "#FFFFFF"
+        "image": "./assets/splash-noroo.png",
+        "resizeMode": "cover",
+        "backgroundColor": "#1F365C"
       },
       "predictiveBackGestureEnabled": false
     },
@@ -42,9 +42,9 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/noroo-paint-logo.png",
-          "resizeMode": "contain",
-          "backgroundColor": "#FFFFFF"
+          "image": "./assets/splash-noroo.png",
+          "resizeMode": "cover",
+          "backgroundColor": "#1F365C"
         }
       ]
     ],

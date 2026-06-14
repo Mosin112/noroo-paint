@@ -55,12 +55,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   requestOtp: async (email) => {
     const trimmed = email.trim();
-    set({ lastError: null });
+    // Optimistic: flip to 'awaiting-otp' immediately so the OTP modal
+    // opens with no perceived latency. The Supabase round-trip continues
+    // in the background; if it actually fails, we roll back to signed-out
+    // and surface the error on SignIn. The user is staring at an empty
+    // 6-box input either way — there's nothing to mis-enter before the
+    // request confirms.
+    set({ mode: 'awaiting-otp', email: trimmed, lastError: null });
     try {
       await apiRequestOtp(trimmed);
-      set({ mode: 'awaiting-otp', email: trimmed });
     } catch (e) {
-      set({ lastError: e instanceof Error ? e.message : String(e) });
+      const msg = e instanceof Error ? e.message : String(e);
+      set({ mode: 'signed-out', lastError: msg });
       throw e;
     }
   },
