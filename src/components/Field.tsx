@@ -80,13 +80,12 @@ const styles = StyleSheet.create({
     marginBottom: 9,
     gap: 3,
   },
-  // Soft red border + barely-there glow. Calm at rest, clear on focus.
+  // Soft red border. Was previously shadow + border, but the legacy
+  // `shadow*` props are deprecated in RN 0.76+ and re-rasterize the field
+  // on every focus toggle — that's the flicker you saw on Android when
+  // tapping between the Colour-screen fields. Border-only is plenty.
   wrapFocused: {
     borderColor: '#F2A0A4',
-    shadowColor: colors.accent,
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 0 },
   },
   labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   requiredStar: { color: colors.accent, fontWeight: '700' },
