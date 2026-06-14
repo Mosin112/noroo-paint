@@ -308,13 +308,11 @@ export async function listMyOrders(limit = 10): Promise<OrderSummary[]> {
 }
 
 export async function postOrder(req: OrderRequest): Promise<OrderResponse> {
-  const d = new Date();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  const orderPrefix = `${mm}${dd}`;
-
   if (USE_SEED) {
-    return { id: `mock-${Date.now()}`, order_number: `${orderPrefix}-A` };
+    const d = new Date();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return { id: `mock-${Date.now()}`, order_number: `${mm}${dd}-A` };
   }
 
   // Fetch product prices so we never trust client-side totals (PRD §11.1).
@@ -342,19 +340,14 @@ export async function postOrder(req: OrderRequest): Promise<OrderResponse> {
   const gst = (subtotal + delivery) * 0.10;
   const total = subtotal + delivery + gst;
 
-  // Next-letter suffix for today's orders (A, B, …, Z, AA, AB, …).
-  const { data: todays, error: cErr } = await supabase!
-    .from('orders')
-    .select('order_number')
-    .like('order_number', `${orderPrefix}-%`);
-  if (cErr) throw cErr;
-  const order_number = `${orderPrefix}-${nextSuffix(todays?.length ?? 0)}`;
-
+  // order_number is assigned by the BEFORE INSERT trigger in migration 005
+  // (security definer, sees all orders). We let the DB pick the next letter
+  // and read it back via .select() — counting client-side would only see
+  // this user's orders under RLS and collide on the unique constraint.
   const { data: { user } } = await supabase!.auth.getUser();
   const { data: order, error: oErr } = await supabase!
     .from('orders')
     .insert({
-      order_number,
       user_id: user?.id ?? null,
       guest_email: user ? null : (req.guest_email ?? null),
       customer_name: req.customer_name,
@@ -396,17 +389,6 @@ export async function postOrder(req: OrderRequest): Promise<OrderResponse> {
   if (iErr) throw iErr;
 
   return { id: order.id, order_number: order.order_number };
-}
-
-function nextSuffix(count: number): string {
-  // A..Z then AA..AZ, BA..BZ, ... — base-26 with no zero digit.
-  let n = count;
-  let out = '';
-  do {
-    out = String.fromCharCode(65 + (n % 26)) + out;
-    n = Math.floor(n / 26) - 1;
-  } while (n >= 0);
-  return out;
 }
 
 // ────────────────────────────────────────────────────────────────────────
