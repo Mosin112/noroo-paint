@@ -138,7 +138,12 @@ export function RootNavigator() {
         {isAuthed ? (
           <RootStack.Screen name="Main" component={MainTabs} />
         ) : (
-          <RootStack.Screen name="SignIn" component={SignInScreen} options={{ presentation: 'modal', gestureEnabled: false }} />
+          // SignIn is the only screen when signed-out, so it doesn't need
+          // modal presentation. On Android, native-stack modals run inside a
+          // Dialog window whose IME attaches to the wrong window — that's
+          // the "tap email field, keyboard flashes and dies" bug from the
+          // v0.2.0 APK. Default push presentation fixes it.
+          <RootStack.Screen name="SignIn" component={SignInScreen} options={{ gestureEnabled: false }} />
         )}
       </RootStack.Navigator>
     </NavigationContainer>
