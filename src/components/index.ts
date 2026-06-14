@@ -11,6 +11,7 @@ export { Screen, ScreenSection } from './Screen';
 export { Heading } from './Heading';
 export { ProductBanner } from './ProductBanner';
 export { SegmentControl } from './SegmentControl';
+export { AppSplash } from './AppSplash';
 export { Summary } from './Summary';
 export type { SummaryLine } from './Summary';
 export { SavedColourChip } from './SavedColourChip';

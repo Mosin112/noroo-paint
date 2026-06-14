@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, Platform, TextInputProps } from 'react-native';
-import { colors, radii, spacing, text } from '../theme';
+import { colors, spacing, text } from '../theme';
 
 type Props = TextInputProps & {
   label: string;
@@ -21,8 +21,14 @@ const KILL_WEB_OUTLINE = Platform.OS === 'web'
 
 // v2.3 fields read as calm at rest:
 //   - Resting: neutral grey border.
-//   - Focused: red border (softer than the saturated brand red) + light ring + red label.
+//   - Focused: soft red border + faint ring + red asterisk in label.
 //   - Required: red asterisk in the label only — the border doesn't shout.
+//
+// IMPORTANT: keep one consistent TextInput style. We used to swap
+// fontSize+fontWeight when value crossed empty→filled to make placeholders
+// look lighter — Android's keyboard dismisses on font-property changes
+// mid-typing (real-device bug from the v0.2.0 APK). Now we use a single
+// style and rely on placeholderTextColor for the muted look.
 export function Field({
   label,
   required,
@@ -35,10 +41,6 @@ export function Field({
   ...input
 }: Props) {
   const [focused, setFocused] = useState(false);
-  // Treat empty / whitespace-only strings as empty so the placeholder
-  // styling kicks in. Numbers (used for some inputs) coerce naturally.
-  const value = input.value;
-  const isEmpty = value === undefined || value === null || (typeof value === 'string' && value.trim() === '');
 
   return (
     <View style={[styles.wrap, focused && styles.wrapFocused]}>
@@ -54,15 +56,7 @@ export function Field({
           <Text style={[text.fieldValue, styles.input, styles.inputFlex]}>{readonlyValue}</Text>
         ) : (
           <TextInput
-            style={[
-              styles.input,
-              styles.inputFlex,
-              // Placeholder appearance — slightly smaller, normal weight,
-              // so it doesn't look like the user already typed something.
-              isEmpty ? styles.inputPlaceholderTone : styles.inputTypedTone,
-              KILL_WEB_OUTLINE,
-              style,
-            ]}
+            style={[styles.input, styles.inputFlex, styles.inputTone, KILL_WEB_OUTLINE, style]}
             placeholderTextColor={colors.muted}
             onFocus={(e) => { setFocused(true); onFocus?.(e); }}
             onBlur={(e) => { setFocused(false); onBlur?.(e); }}
@@ -86,9 +80,7 @@ const styles = StyleSheet.create({
     marginBottom: 9,
     gap: 3,
   },
-  // Soft red border — toned down from the previous 1.5px saturated red +
-  // 18% opacity ring (felt like an error state). Now it's the same width
-  // with a near-invisible glow that just hints at focus.
+  // Soft red border + barely-there glow. Calm at rest, clear on focus.
   wrapFocused: {
     borderColor: '#F2A0A4',
     shadowColor: colors.accent,
@@ -97,14 +89,12 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
   },
   labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  // Asterisk stays in the strong brand red so required-ness reads at a glance.
   requiredStar: { color: colors.accent, fontWeight: '700' },
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   inputFlex: { flex: 1 },
   input: { padding: 0, margin: 0, fontFamily: text.fieldValue.fontFamily },
-  // Typed value — full ink weight, real size.
-  inputTypedTone: { fontSize: 14, fontWeight: '600', color: colors.ink },
-  // Placeholder hint — smaller, normal weight, muted color.
-  inputPlaceholderTone: { fontSize: 13, fontWeight: '400', color: colors.ink },
+  // Single consistent input tone — see comment on the component for the
+  // Android keyboard bug we used to trip when this style toggled mid-typing.
+  inputTone: { fontSize: 14, fontWeight: '500', color: colors.ink },
   actionWrap: { marginLeft: 6 },
 });

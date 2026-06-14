@@ -1,5 +1,5 @@
 import 'react-native-gesture-handler';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -10,12 +10,11 @@ import { RootNavigator } from './src/navigation/RootNavigator';
 import { useAuthStore } from './src/state/authStore';
 import { assertEnvOrThrow } from './src/lib/env';
 import { initSentry, wrap as sentryWrap } from './src/lib/sentry';
-import { ErrorBoundary } from './src/components';
+import { ErrorBoundary, AppSplash } from './src/components';
 import { colors } from './src/theme';
 
-// Keep the splash visible while the JS bundle parses and we hydrate the
-// auth session. Without this the splash hides as soon as RN mounts, which
-// on real devices flashes for ~50ms and feels broken.
+// Keep the native splash visible while we mount the JS splash. Once the
+// JS one renders, it covers the screen and the native one can hide.
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 // Crash visibly at boot if a production build is missing Supabase creds.
@@ -28,6 +27,11 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  // Show the JS splash on top of the navigator. AppSplash calls back when
+  // its ~1.7s + fade animation finishes; only then do we let the real app
+  // become interactive.
+  const [splashGone, setSplashGone] = useState(false);
+
   // Restore any existing Supabase session on cold start (PRD §5.1).
   useEffect(() => {
     let cancelled = false;
@@ -35,6 +39,9 @@ function App() {
       try {
         await useAuthStore.getState().hydrate();
       } finally {
+        // Hide the NATIVE splash as soon as auth is restored. The JS
+        // AppSplash sits on top so the user sees a seamless transition
+        // from the native splash → JS splash → navigator.
         if (!cancelled) await SplashScreen.hideAsync().catch(() => undefined);
       }
     })();
@@ -48,6 +55,7 @@ function App() {
           <QueryClientProvider client={queryClient}>
             <StatusBar style="dark" />
             <RootNavigator />
+            {!splashGone ? <AppSplash onDone={() => setSplashGone(true)} /> : null}
           </QueryClientProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>
