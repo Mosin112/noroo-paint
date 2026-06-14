@@ -163,6 +163,22 @@ create policy "own order_items"    on order_items   for all using (
   exists (select 1 from orders o where o.id = order_items.order_id and o.user_id = auth.uid())
 );
 
+-- Guest checkout. Anonymous users can create + read orders + order_items
+-- whose user_id IS NULL. Tight enough to keep authenticated rows private,
+-- loose enough to let "Continue as guest" through.
+create policy "guest orders insert" on orders for insert to anon
+  with check (user_id is null);
+create policy "guest orders read own" on orders for select to anon
+  using (user_id is null);
+create policy "guest order_items insert" on order_items for insert to anon
+  with check (exists (
+    select 1 from orders o where o.id = order_items.order_id and o.user_id is null
+  ));
+create policy "guest order_items read own" on order_items for select to anon
+  using (exists (
+    select 1 from orders o where o.id = order_items.order_id and o.user_id is null
+  ));
+
 -- Waitlist: insert-only for everyone; service role reads
 create policy "waitlist insert" on waitlist for insert with check (true);
 

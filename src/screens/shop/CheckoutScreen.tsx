@@ -40,29 +40,29 @@ export function CheckoutScreen({ navigation }: Props) {
   const [postcode, setPostcode] = useState('');
   const [notes, setNotes] = useState('');
 
-  const [inZone, setInZone] = useState(true);
+  // Tri-state zone check so we can distinguish "still checking" from
+  // "already checked and not in zone". The old binary `inZone` caused a
+  // race: the auto-navigation to OutOfZone fired on every 4-digit postcode
+  // BEFORE checkZone resolved, kicking valid in-zone customers off the
+  // screen mid-typing. We now only show the out-of-zone status inline.
+  type ZoneStatus = 'idle' | 'in-zone' | 'out-of-zone';
+  const [zoneStatus, setZoneStatus] = useState<ZoneStatus>('idle');
+  const inZone = zoneStatus === 'in-zone';
   const [submitting, setSubmitting] = useState(false);
 
-  // Re-check zone whenever the postcode changes. Postcode validity stays
-  // gated by the existing binary Perth-metro list.
   useEffect(() => {
     let cancelled = false;
-    if (mode === 'pickup') { setInZone(true); return; }
+    if (mode === 'pickup') { setZoneStatus('in-zone'); return; }
     const trimmed = postcode.trim();
-    if (!/^\d{4}$/.test(trimmed)) { setInZone(false); return; }
+    if (!/^\d{4}$/.test(trimmed)) { setZoneStatus('idle'); return; }
     checkZone(trimmed)
-      .then((res) => { if (!cancelled) setInZone(res.in_zone); })
+      .then((res) => {
+        if (cancelled) return;
+        setZoneStatus(res.in_zone ? 'in-zone' : 'out-of-zone');
+      })
       .catch(() => undefined);
     return () => { cancelled = true; };
   }, [postcode, mode]);
-
-  // Out-of-zone interstitial — only triggered after the user has typed a
-  // full 4-digit postcode that isn't in our coverage list.
-  useEffect(() => {
-    if (mode === 'delivery' && !inZone && /^\d{4}$/.test(postcode.trim())) {
-      navigation.navigate('OutOfZone', { postcode: postcode.trim() });
-    }
-  }, [mode, inZone, postcode, navigation]);
 
   // Pickup forces $0 delivery so the running totals don't smuggle a hidden
   // $25 fee through the GST + Total lines.
@@ -277,10 +277,17 @@ export function CheckoutScreen({ navigation }: Props) {
             </View>
           </View>
 
-          {/^\d{4}$/.test(postcode.trim()) && inZone ? (
+          {zoneStatus === 'in-zone' && /^\d{4}$/.test(postcode.trim()) ? (
             <View style={styles.zoneOk}>
               <Check size={14} color={colors.good} strokeWidth={2.5} />
               <Text style={styles.zoneOkText}>Perth metro · free delivery on orders $400+</Text>
+            </View>
+          ) : null}
+          {zoneStatus === 'out-of-zone' ? (
+            <View style={styles.zoneBad}>
+              <Text style={styles.zoneBadText}>
+                Outside our delivery area · we currently deliver across Perth metro
+              </Text>
             </View>
           ) : null}
         </>
@@ -335,6 +342,12 @@ const styles = StyleSheet.create({
     marginTop: 2, marginBottom: 8,
   },
   zoneOkText: { color: colors.good, fontSize: 12, fontWeight: '700' },
+  zoneBad: {
+    backgroundColor: colors.warnBg,
+    paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10,
+    marginTop: 2, marginBottom: 8,
+  },
+  zoneBadText: { color: colors.warn, fontSize: 12, fontWeight: '600', lineHeight: 16 },
   pickCard: {
     backgroundColor: colors.paper,
     borderWidth: 1, borderColor: colors.rule,
