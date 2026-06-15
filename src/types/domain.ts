@@ -67,9 +67,9 @@ export type DeliveryMode = 'delivery' | 'pickup';
 // Single hardcoded store location for MVP. Move to a Supabase table when
 // we need to support multiple stores.
 export const PICKUP_LOCATION = {
-  name: 'Synergy Building Supplies',
-  address: '236–238 Planet St, Welshpool WA 6106',
-  hours: 'Mon–Fri 7am – 4pm',
+  name: 'Perth Paint Supplies',
+  address: '236 Planet St, Welshpool WA 6106',
+  hours: 'Mon–Fri 7am – 4pm · Sat 8am – 12pm',
 } as const;
 
 export type ZoneCheck = {
