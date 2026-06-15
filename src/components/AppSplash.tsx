@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, Image, Animated, Easing, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../theme';
 
 // JS splash that mounts on top of the navigator. The native Expo splash
@@ -69,6 +70,15 @@ export function AppSplash({ onDone }: { onDone: () => void }) {
 
   return (
     <Animated.View style={[styles.wrap, { opacity: fade }]} pointerEvents="none">
+      {/* 2.4 deeper navy gradient — approximates the design's radial
+          spotlight by stacking a brighter top stop into a darker base. */}
+      <LinearGradient
+        colors={['#2E4D7D', '#1F365C', '#101F3A']}
+        locations={[0, 0.46, 1]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
       <Animated.View style={[styles.card, { transform: [{ scale: cardScale }] }]}>
         <Image
           source={require('../../assets/noroo-paint-logo.png')}

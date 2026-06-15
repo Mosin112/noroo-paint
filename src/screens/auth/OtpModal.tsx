@@ -14,7 +14,7 @@ import {
 import { useAuthStore } from '../../state/authStore';
 import { requestOtp as apiRequestOtp } from '../../api/client';
 import { CTA } from '../../components/CTA';
-import { colors, radii, spacing, text } from '../../theme';
+import { colors, radii, shadows, spacing, text } from '../../theme';
 
 // Six-box OTP entry. Matches PRD §5.3 spec and the Supabase project's
 // configured OTP length (set Dashboard → Auth → Configuration → OTP length = 6).
@@ -230,11 +230,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.fieldBorder,
     backgroundColor: '#fff',
-    borderRadius: radii.field,
+    borderRadius: 14,
     textAlign: 'center',
     fontSize: 20,
     fontWeight: '600',
     color: colors.ink,
+    ...shadows.resting,
   },
   boxError: { borderColor: colors.accent },
   error: {

@@ -26,14 +26,15 @@ export const spacing = {
   navH: 18,
 } as const;
 
+// 2.4 standardized corner radii.
 export const radii = {
-  field: 10,
-  tile: 12,
-  chip: 999,
-  cta: 12,
-  summary: 10,
-  alert: 10,
-  qty: 8,
+  field: 14,    // text inputs + OTP boxes
+  tile: 18,    // category + product tiles
+  chip: 999,   // fully rounded chips
+  cta: 16,     // primary action button
+  summary: 16, // summary cards
+  alert: 14,
+  qty: 10,
   swatch: 6,
   progress: 2,
 } as const;

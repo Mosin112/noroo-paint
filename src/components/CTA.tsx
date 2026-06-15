@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, Text, StyleSheet, ActivityIndicator, View } from 'react-native';
-import { colors, radii, spacing, text } from '../theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { colors, radii, shadows, spacing, text } from '../theme';
 
 type Props = {
   label: string;
@@ -10,17 +11,19 @@ type Props = {
   loading?: boolean;
 };
 
-// Primary CTA: red, white text. Ghost CTA: white bg, navy border + text.
-// Both follow the v2.3 design system §5.
+// Primary CTA: red vertical gradient with a faint top highlight and a
+// brand-red glow underneath. Ghost CTA: white bg, navy border + text.
 //
-// Why this shape:
-//   - <View> wrap owns the *padding* (not margin) — the Pressable's box
-//     is naturally inset by ctaMarginH on each side without overflow.
-//   - <Pressable> uses alignSelf: 'stretch' so it fills the wrap's
-//     content area edge-to-edge. RN-web previously collapsed Pressable's
-//     hit region to its <Text> child even with the bg painted full-width;
-//     using padding-on-parent + alignSelf stretch keeps the layout box
-//     and the touch region the same size on every platform.
+// Layering (the only nuance worth knowing):
+//   - Pressable carries shadow + solid bg fallback. It MUST NOT have
+//     overflow:'hidden' or iOS clips the shadow.
+//   - A sibling <View> inside the Pressable carries borderRadius +
+//     overflow:'hidden' and hosts the absolutely-positioned LinearGradient
+//     so the gradient is clipped to the radius without disturbing the
+//     shadow.
+//   - Wrap owns padding (not margin) so the Pressable's tap region is
+//     identical to its visible box on every platform — Android was
+//     collapsing margin+Pressable and the hit region overflowed.
 
 export function CTA({ label, onPress, variant = 'primary', disabled, loading }: Props) {
   const isGhost = variant === 'ghost';
@@ -30,14 +33,27 @@ export function CTA({ label, onPress, variant = 'primary', disabled, loading }: 
       <Pressable
         onPress={onPress}
         disabled={isInactive}
-        android_ripple={isInactive ? undefined : { color: isGhost ? colors.tint : colors.accentPress }}
+        android_ripple={isInactive ? undefined : { color: isGhost ? colors.tint : '#cd1017' }}
         style={({ pressed }) => [
           styles.base,
-          isGhost ? styles.ghost : styles.primary,
+          isGhost ? styles.ghost : styles.primaryFrame,
+          !isGhost && !isInactive && shadows.cta,
           isInactive && styles.disabled,
-          pressed && !isInactive && (isGhost ? styles.ghostPressed : styles.primaryPressed),
+          pressed && !isInactive && styles.pressed,
         ]}
       >
+        {!isGhost ? (
+          <View style={styles.clip} pointerEvents="none">
+            <LinearGradient
+              colors={['#f2333d', '#e5141b', '#cd1017']}
+              locations={[0, 0.55, 1]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.topHighlight} />
+          </View>
+        ) : null}
         {loading ? (
           <ActivityIndicator color={isGhost ? colors.navy : '#fff'} />
         ) : (
@@ -56,15 +72,35 @@ const styles = StyleSheet.create({
   },
   base: {
     alignSelf: 'stretch',
-    paddingVertical: spacing.ctaPad,
+    paddingVertical: spacing.ctaPad + 1,   // 15
     paddingHorizontal: spacing.ctaPad,
     borderRadius: radii.cta,
     alignItems: 'center',
     justifyContent: 'center',
+    // No overflow:'hidden' here — would clip the iOS shadow.
   },
-  primary: { backgroundColor: colors.accent },
-  primaryPressed: { backgroundColor: colors.accentPress },
-  ghost: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: colors.rule },
-  ghostPressed: { borderColor: colors.navy, backgroundColor: colors.tint },
+  // Solid fallback below the gradient + the "solid bg required for shadow".
+  primaryFrame: { backgroundColor: colors.accent },
+  ghost: {
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: colors.rule,
+  },
+  // Sits inside the Pressable, fills it, clips the gradient + top
+  // highlight to the radius. zIndex 0 so the Text renders above it.
+  clip: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    borderRadius: radii.cta,
+    overflow: 'hidden',
+  },
+  // 1px white highlight along the very top — fakes the "inner highlight"
+  // CSS gives you for free; RN has no inset shadows.
+  topHighlight: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, height: 1,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+  },
+  pressed: { opacity: 0.95 },
   disabled: { opacity: 0.4 },
 });

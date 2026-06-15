@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { colors, text } from '../theme';
+import { colors, radii, shadows, text } from '../theme';
 
 // Two row variants in the v2.3 summary:
 //   - `product` rows have a primary name + a smaller meta line below
@@ -61,13 +61,14 @@ export function Summary({ lines }: { lines: SummaryLine[] }) {
 const styles = StyleSheet.create({
   wrap: {
     backgroundColor: colors.paper,
-    borderRadius: 13,
+    borderRadius: radii.summary,
     paddingVertical: 11,
     paddingHorizontal: 14,
     marginBottom: 8,
-    // v2.3 §4 — no drop shadows on in-screen elements; rely on borders.
     borderWidth: 1,
     borderColor: colors.rule,
+    // 2.4: lifted summary card.
+    ...shadows.resting,
   },
   row: {
     flexDirection: 'row',
