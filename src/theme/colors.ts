@@ -8,25 +8,25 @@
 // instead of decorative.
 
 export const colors = {
-  // App surfaces
-  bg: '#F5F7FB',
+  // App surfaces — v2.5 refreshed neutrals. Brand navy + accent stay intact.
+  bg: '#eef1f7',
   paper: '#FFFFFF',
 
   // Text
-  ink: '#16233D',
-  ink2: '#3A4A66',
-  muted: '#5C6A85',
+  ink: '#111c33',
+  ink2: '#384663',
+  muted: '#6a7892',
 
   // Borders / dividers
-  rule: '#E1E7F0',
-  rule2: '#EEF2F8',
-  fieldBorder: '#D9E0EC',
+  rule: '#e7ebf3',
+  rule2: '#f0f3f9',
+  fieldBorder: '#dce3ef',
   fieldBorderHover: '#B7C2D6',
 
   // Brand navy (primary)
   navy: '#1F365C',
   navyDeep: '#16284A',
-  tint: '#EAF0FA', // navy 8% tint — selected tile bg, info alerts
+  tint: '#eef3fc', // navy 8% tint — selected tile bg, info alerts
 
   // Brand red (action) — sole owner of "primary CTA" and required-field UX
   accent: '#E5141B',

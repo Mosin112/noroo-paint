@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, View, Text, StyleSheet } from 'react-native';
-import { colors, radii, spacing, text } from '../theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { colors, radii, shadows, spacing, text } from '../theme';
 
 type Props = {
   label?: string;       // small uppercase caption (optional in v2.3 layout)
@@ -13,6 +14,13 @@ type Props = {
   onPress?: () => void;
 };
 
+// v2.5 Tile:
+//   - resting shadow at rest, raised shadow while pressed (swapped via
+//     Pressable's pressed callback)
+//   - solid white bg required so iOS actually paints the shadow
+//   - icon chip is a soft navy-tinted LinearGradient so the chrome reads
+//     as depth, not as a flat solid block
+
 export function Tile({ label, title, icon, selected, fullWidth, onPress }: Props) {
   return (
     <Pressable
@@ -20,13 +28,21 @@ export function Tile({ label, title, icon, selected, fullWidth, onPress }: Props
       style={({ pressed }) => [
         styles.base,
         fullWidth && styles.fullWidth,
+        pressed ? shadows.raised : shadows.resting,
         selected && styles.selected,
-        pressed && !selected && styles.pressed,
       ]}
     >
       {icon ? (
         <View style={[styles.iconWrap, selected && styles.iconWrapSelected]}>
-          {icon}
+          {!selected ? (
+            <LinearGradient
+              colors={['#eef3fc', '#e2eaf8']}
+              start={{ x: 0.1, y: 0 }}
+              end={{ x: 0.9, y: 1 }}
+              style={styles.iconGradient}
+            />
+          ) : null}
+          <View style={styles.iconGlyph}>{icon}</View>
         </View>
       ) : null}
       {label ? <Text style={text.tileLabel}>{label}</Text> : null}
@@ -38,25 +54,27 @@ export function Tile({ label, title, icon, selected, fullWidth, onPress }: Props
 const styles = StyleSheet.create({
   base: {
     flex: 1,
-    borderWidth: 1.5,
-    borderColor: colors.rule,
+    borderWidth: 1,
+    borderColor: colors.rule2,
     backgroundColor: colors.paper,
-    borderRadius: 15,
+    borderRadius: radii.tile,
     paddingVertical: spacing.tileV,
     paddingHorizontal: spacing.tileH,
     gap: 8,
   },
-  // Per v2.3: selected tile uses navy border + tint background; caption
-  // turns navy (handled at the label call-site if needed).
+  // Selected tile reads as the navy brand — opaque tint + navy border.
   selected: { borderColor: colors.navy, backgroundColor: colors.tint },
-  pressed: { borderColor: colors.fieldBorderHover },
   fullWidth: { width: '100%', flexBasis: '100%', flexDirection: 'row', alignItems: 'center', gap: 12 },
   iconWrap: {
-    width: 38, height: 38, borderRadius: 11,
-    backgroundColor: colors.tint,
+    width: 38, height: 38,
+    borderRadius: 11,
+    overflow: 'hidden',
     alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.tint, // selected-state colour shows through when selected
   },
   iconWrapSelected: { backgroundColor: '#fff' },
+  iconGradient: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  iconGlyph: { alignItems: 'center', justifyContent: 'center' },
 });
 
 export function TileGrid({ children }: { children: React.ReactNode }) {

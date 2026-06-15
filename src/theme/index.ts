@@ -3,3 +3,5 @@ export type { ColorToken } from './colors';
 export { text, fontFamily, fontFamilyMono } from './typography';
 export type { TextVariant } from './typography';
 export { spacing, radii, sizes } from './spacing';
+export { shadows } from './shadows';
+export type { ShadowTier } from './shadows';

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, Platform, TextInputProps } from 'react-native';
-import { colors, spacing, text } from '../theme';
+import { colors, radii, spacing, text } from '../theme';
 
 type Props = TextInputProps & {
   label: string;
@@ -14,15 +14,17 @@ type Props = TextInputProps & {
 
 // On web RN-web leaves the browser's native :focus outline on <input>,
 // which renders as an orange/yellow rectangle around the field. Kill it
-// here — the wrapper's red border + soft ring is our focus affordance.
+// here — the wrapper's border is our focus affordance.
 const KILL_WEB_OUTLINE = Platform.OS === 'web'
   ? ({ outlineWidth: 0, outlineStyle: 'none' } as any)
   : null;
 
-// v2.3 fields read as calm at rest:
-//   - Resting: neutral grey border.
-//   - Focused: soft red border + faint ring + red asterisk in label.
-//   - Required: red asterisk in the label only — the border doesn't shout.
+// v2.5 fields:
+//   - Resting: neutral grey border. The whole frame is calm.
+//   - Focused: navy border + a faint navy shadow ring.
+//   - Required: red asterisk on the label only — the border NEVER turns
+//     red, so the "you need to fill this" message is carried by the
+//     label, not by a panicky red box around the input.
 //
 // IMPORTANT: keep one consistent TextInput style. We used to swap
 // fontSize+fontWeight when value crossed empty→filled to make placeholders
@@ -45,7 +47,7 @@ export function Field({
   return (
     <View style={[styles.wrap, focused && styles.wrapFocused]}>
       <View style={styles.labelRow}>
-        <Text style={focused ? text.fieldLabelAccent : text.fieldLabel}>
+        <Text style={[text.fieldLabel, focused && styles.labelFocused]}>
           {label}
           {required ? <Text style={styles.requiredStar}> *</Text> : null}
         </Text>
@@ -74,26 +76,31 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.fieldBorder,
     backgroundColor: colors.paper,
-    borderRadius: 12,
+    borderRadius: radii.field,
     paddingVertical: spacing.fieldV,
     paddingHorizontal: spacing.fieldH,
     marginBottom: 9,
     gap: 3,
   },
-  // Soft red border. Was previously shadow + border, but the legacy
-  // `shadow*` props are deprecated in RN 0.76+ and re-rasterize the field
-  // on every focus toggle — that's the flicker you saw on Android when
-  // tapping between the Colour-screen fields. Border-only is plenty.
+  // Navy border + a soft navy ring on focus. iOS reads the shadow, Android
+  // gets a small `elevation` lift — together they replicate the focus ring
+  // that RN can't draw natively.
   wrapFocused: {
-    borderColor: '#F2A0A4',
+    borderColor: colors.navy,
+    shadowColor: colors.navy,
+    shadowOpacity: 0.13,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 2,
   },
   labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  labelFocused: { color: colors.navy },
+  // Red is reserved for the asterisk on required fields — the only red
+  // accent inside a field's chrome.
   requiredStar: { color: colors.accent, fontWeight: '700' },
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   inputFlex: { flex: 1 },
   input: { padding: 0, margin: 0, fontFamily: text.fieldValue.fontFamily },
-  // Single consistent input tone — see comment on the component for the
-  // Android keyboard bug we used to trip when this style toggled mid-typing.
   inputTone: { fontSize: 14, fontWeight: '500', color: colors.ink },
   actionWrap: { marginLeft: 6 },
 });

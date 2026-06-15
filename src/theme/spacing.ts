@@ -26,15 +26,20 @@ export const spacing = {
   navH: 18,
 } as const;
 
+// v2.5 — radius tokens standardised to the design-system spec:
+//   tile 18 · field 14 · summary 16 · otp 14 · chip 999 (pill) · cta 16
+// Older values (field 10, tile 12, summary 10) felt flat — bumped to the
+// next step up so the depth tiers in `shadows` have room to read.
 export const radii = {
-  field: 10,
-  tile: 12,
+  field: 14,
+  tile: 18,
   chip: 999,
-  cta: 12,
-  summary: 10,
-  alert: 10,
-  qty: 8,
-  swatch: 6,
+  cta: 16,
+  summary: 16,
+  alert: 14,
+  qty: 10,
+  swatch: 8,
+  otp: 14,
   progress: 2,
 } as const;
 
