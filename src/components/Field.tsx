@@ -82,16 +82,14 @@ const styles = StyleSheet.create({
     marginBottom: 9,
     gap: 3,
   },
-  // Navy border + a soft navy ring on focus. iOS reads the shadow, Android
-  // gets a small `elevation` lift — together they replicate the focus ring
-  // that RN can't draw natively.
+  // Border-only focus state. We had a navy shadow + elevation ring here
+  // briefly during the v2.5 refresh — Android rebuilds the view's hardware
+  // layer on every elevation toggle, which dismisses the IME (email field
+  // wouldn't open the keyboard) and flickers neighbouring fields on the
+  // Colour screen. Border colour alone is plenty of affordance and is the
+  // only safe change on Android (no layer rebuild).
   wrapFocused: {
     borderColor: colors.navy,
-    shadowColor: colors.navy,
-    shadowOpacity: 0.13,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 2,
   },
   labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   labelFocused: { color: colors.navy },
