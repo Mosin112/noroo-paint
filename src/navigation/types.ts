@@ -43,10 +43,15 @@ export type ShopStackParamList = {
   Confirmed: { order: ConfirmedOrder };
 };
 
+export type AccountStackParamList = {
+  AccountHome: undefined;
+  RecentOrders: undefined;
+};
+
 export type MainTabParamList = {
   Shop: NavigatorScreenParams<ShopStackParamList>;
   BasketTab: undefined;
-  Account: undefined;
+  Account: NavigatorScreenParams<AccountStackParamList>;
 };
 
 export type RootStackParamList = {

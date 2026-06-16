@@ -14,12 +14,12 @@ import { useAuthStore } from './authStore';
 // We always hold the canonical list in this store; sync calls fire-and-forget
 // on signed-in writes so the UI never blocks on the network.
 
-const GUEST_SEED: SavedColour[] = [
-  { id: 'guest-1', brand: 'Dulux',     colour_name: 'Natural White',   last_used_at: new Date().toISOString() },
-  { id: 'guest-2', brand: 'Taubmans',  colour_name: 'Crisp White',     last_used_at: new Date().toISOString() },
-  { id: 'guest-3', brand: 'Dulux',     colour_name: 'Lexicon Quarter', last_used_at: new Date().toISOString() },
-  { id: 'guest-4', brand: 'Colorbond', colour_name: 'Monument',        last_used_at: new Date().toISOString() },
-];
+// Guests start with no saved colours. Anything they save during the
+// session lives in this store until they sign in (where it would be
+// replaced by their real list) or close the app. The previous demo
+// seeds (Dulux Natural White, Taubmans Crisp White, etc.) confused
+// users into thinking those were their own past picks.
+const GUEST_SEED: SavedColour[] = [];
 
 type State = {
   colours: SavedColour[];

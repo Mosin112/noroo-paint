@@ -9,10 +9,9 @@ import {
   RANGE_META,
   WHERE_TILES,
   type PaintFinish,
-  type Product,
   type ProductCategory,
 } from '../../types/domain';
-import { listProducts } from '../../api/client';
+import { useProductsByCategory } from '../../data/useProducts';
 import type { ShopStackParamList } from '../../navigation/types';
 import { colors, rangeColor, text } from '../../theme';
 
@@ -25,16 +24,10 @@ export function FinishScreen({ route, navigation }: Props) {
   const accent = rangeColor(category);
   const whereLabel = WHERE_TILES.find((t) => t.category === category)?.label ?? category;
 
-  // Load every active product in this category once; finish is a client-side
-  // filter so the chip row reacts instantly.
-  const [all, setAll] = useState<Product[]>([]);
-  useEffect(() => {
-    let cancelled = false;
-    listProducts({ category })
-      .then((r) => { if (!cancelled) setAll(r); })
-      .catch(() => undefined);
-    return () => { cancelled = true; };
-  }, [category]);
+  // Read the per-category slice from the cached catalogue (see
+  // src/data/useProducts.ts). First open: tiny one-time fetch. Every
+  // subsequent category open: instant cache hit.
+  const { products: all } = useProductsByCategory(category);
 
   // Distinct finishes available in this category — drives the chip row.
   const availableFinishes = useMemo<PaintFinish[]>(() => {

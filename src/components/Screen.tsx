@@ -10,6 +10,10 @@ type Props = {
   scroll?: boolean;
   // Optional fixed footer (e.g. CTA) outside the scroll area.
   footer?: React.ReactNode;
+  // Optional fixed header rendered above the scroll area — pass things
+  // here that should stay pinned while the body scrolls (e.g. the
+  // ProgressBar on the Checkout / Address screen).
+  stickyHeader?: React.ReactNode;
 };
 
 // v2.5 — the page background is a vertical gradient from a near-white
@@ -19,7 +23,7 @@ type Props = {
 // indicator pick up the neutral bg cleanly.
 const PAGE_BG = ['#f7f9fd', '#eef1f7', '#e6eaf2'] as const;
 
-export function Screen({ children, scroll = true, footer }: Props) {
+export function Screen({ children, scroll = true, footer, stickyHeader }: Props) {
   const insets = useSafeAreaInsets();
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.safe}>
@@ -34,6 +38,7 @@ export function Screen({ children, scroll = true, footer }: Props) {
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
+        {stickyHeader ? <View style={styles.stickyHeader}>{stickyHeader}</View> : null}
         {scroll ? (
           <ScrollView
             style={styles.flex}
@@ -60,5 +65,6 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   flex: { flex: 1 },
   body: { paddingHorizontal: spacing.bodyH, paddingBottom: 24 },
+  stickyHeader: { paddingHorizontal: spacing.bodyH },
   section: { paddingHorizontal: spacing.sectionH - spacing.bodyH, marginBottom: 16 },
 });

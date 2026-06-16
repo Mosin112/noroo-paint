@@ -43,15 +43,21 @@ export function CTA({ label, onPress, variant = 'primary', disabled, loading }: 
         ]}
       >
         {!isGhost ? (
-          <View style={styles.clip} pointerEvents="none">
+          // pointerEvents set on EVERY overlay layer, both via props (legacy
+          // RN compat) and style.pointerEvents (RN 0.76+ canonical). On
+          // some Android builds, props-only pointerEvents="none" failed to
+          // cascade to LinearGradient, leaving the gradient swallowing
+          // periphery taps — that's the "only the centre works" bug.
+          <View style={[styles.clip, styles.noTouch]} pointerEvents="none">
             <LinearGradient
+              pointerEvents="none"
               colors={['#f2333d', '#e5141b', '#cd1017']}
               locations={[0, 0.55, 1]}
               start={{ x: 0, y: 0 }}
               end={{ x: 0, y: 1 }}
-              style={StyleSheet.absoluteFill}
+              style={[StyleSheet.absoluteFill, styles.noTouch]}
             />
-            <View style={styles.topHighlight} />
+            <View pointerEvents="none" style={[styles.topHighlight, styles.noTouch]} />
           </View>
         ) : null}
         {loading ? (
@@ -101,6 +107,9 @@ const styles = StyleSheet.create({
     top: 0, left: 0, right: 0, height: 1,
     backgroundColor: 'rgba(255,255,255,0.22)',
   },
+  // RN 0.76+ canonical: pointer-events in style. Belt+suspenders with the
+  // legacy prop above so we cover every version that ships through Expo.
+  noTouch: { pointerEvents: 'none' as const },
   pressed: { opacity: 0.95 },
   disabled: { opacity: 0.4 },
 });

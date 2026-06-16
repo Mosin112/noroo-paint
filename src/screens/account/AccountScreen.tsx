@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, ActivityIndicator, Alert as RNAlert } from 'react-native';
-import { Check, X } from 'lucide-react-native';
+import { Check, X, ChevronRight } from 'lucide-react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Screen, ScreenHeader, Heading, Field, CTA, SavedColourChip } from '../../components';
 import { useAuthStore, useSavedColoursStore } from '../../state';
 import { useUserStore } from '../../state/userStore';
-import { deleteAccount, listMyOrders, type OrderSummary } from '../../api/client';
+import { deleteAccount } from '../../api/client';
+import type { AccountStackParamList } from '../../navigation/types';
 import { colors, radii, spacing, text } from '../../theme';
 
 // Joins "<address line>" and "<postcode>" the way the Account UI presents.
@@ -30,6 +33,7 @@ function parseContact(combined: string): { full_name: string; phone: string } {
 }
 
 export function AccountScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<AccountStackParamList>>();
   const email = useAuthStore((s) => s.email);
   const mode = useAuthStore((s) => s.mode);
   const signOut = useAuthStore((s) => s.signOut);
@@ -54,18 +58,6 @@ export function AccountScreen() {
   const [contactSaving, setContactSaving] = useState(false);
   const [addressJustSaved, setAddressJustSaved] = useState(false);
   const [contactJustSaved, setContactJustSaved] = useState(false);
-
-  // Recent orders for the signed-in user. Fetched lazily on mount; guest
-  // mode never sees orders here (no Supabase session = nothing to scope to).
-  const [orders, setOrders] = useState<OrderSummary[] | null>(null);
-  useEffect(() => {
-    if (isGuest) { setOrders([]); return; }
-    let cancelled = false;
-    listMyOrders(10)
-      .then((rows) => { if (!cancelled) setOrders(rows); })
-      .catch(() => { if (!cancelled) setOrders([]); });
-    return () => { cancelled = true; };
-  }, [isGuest, profile?.id]);
 
   // Sync from the store whenever it (re)hydrates. No prototype fallback —
   // guest mode also starts empty so users type their own details.
@@ -247,66 +239,51 @@ export function AccountScreen() {
         )}
       </View>
 
-      <Text style={[text.fieldLabel, { marginTop: 18, marginBottom: 6 }]}>RECENT ORDERS</Text>
-      {orders === null ? (
-        <View style={styles.orderRow}>
-          <ActivityIndicator color={colors.navy} />
+      <Text style={[text.fieldLabel, { marginTop: 18, marginBottom: 6 }]}>ORDERS</Text>
+      <Pressable
+        onPress={() => navigation.navigate('RecentOrders')}
+        disabled={isGuest}
+        android_ripple={isGuest ? undefined : { color: colors.rule2 }}
+        style={({ pressed }) => [
+          styles.entryRow,
+          pressed && !isGuest && styles.entryRowPressed,
+          isGuest && styles.entryRowDisabled,
+        ]}
+      >
+        <View style={{ flex: 1 }}>
+          <Text style={styles.entryTitle}>Recent orders</Text>
+          <Text style={styles.entrySub}>
+            {isGuest
+              ? 'Sign in to keep an order history.'
+              : 'See every paint order you’ve placed.'}
+          </Text>
         </View>
-      ) : orders.length === 0 ? (
-        <View style={styles.orderRow}>
-          <Text style={text.rowSubtitle}>No orders yet — they'll appear here after checkout.</Text>
-        </View>
-      ) : (
-        <View style={styles.orderList}>
-          {orders.map((o) => (
-            <View key={o.id} style={styles.orderItem}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.orderNumber}>#{o.order_number}</Text>
-                <Text style={styles.orderMeta}>
-                  {formatOrderDate(o.created_at)} · {o.delivery_mode === 'pickup' ? 'Pickup' : 'Delivery'}
-                </Text>
-              </View>
-              <Text style={styles.orderTotal}>${Number(o.total_aud).toFixed(2)}</Text>
-            </View>
-          ))}
-        </View>
-      )}
+        <ChevronRight size={18} color={isGuest ? colors.muted : colors.navy} />
+      </Pressable>
     </Screen>
   );
-}
-
-// "22 May" style — keeps the row compact.
-function formatOrderDate(iso: string): string {
-  try {
-    const d = new Date(iso);
-    return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
-  } catch {
-    return iso.slice(0, 10);
-  }
 }
 
 const styles = StyleSheet.create({
   savedRow: { flexDirection: 'row', flexWrap: 'wrap' },
   savedItem: { flexDirection: 'row', alignItems: 'center', marginRight: 6 },
   x: { padding: 4, marginLeft: -8, marginRight: 8 },
-  orderList: { gap: 0 },
-  orderItem: {
+  // Tappable row that opens the Recent Orders sub-page. Same field-style
+  // chrome as the editable rows above so the screen reads as one list.
+  entryRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.rule2,
-  },
-  orderNumber: { fontSize: 13, fontWeight: '700', color: colors.ink },
-  orderMeta: { fontSize: 11, color: colors.muted, marginTop: 2 },
-  orderTotal: { fontSize: 13, fontWeight: '700', color: colors.ink },
-  orderRow: {
     borderWidth: 1,
     borderColor: colors.fieldBorder,
     borderRadius: radii.field,
-    padding: spacing.fieldH,
+    paddingVertical: spacing.fieldV,
+    paddingHorizontal: spacing.fieldH,
     backgroundColor: '#fff',
   },
+  entryRowPressed: { backgroundColor: colors.tint },
+  entryRowDisabled: { opacity: 0.55 },
+  entryTitle: { fontSize: 13, fontWeight: '700', color: colors.ink },
+  entrySub: { fontSize: 11, color: colors.muted, marginTop: 2 },
   deleteWrap: { alignItems: 'center', paddingVertical: 8, paddingHorizontal: 18, marginBottom: 8 },
   deleteText: { color: colors.warn, fontSize: 12, fontWeight: '500' },
   tick: {

@@ -205,9 +205,9 @@ export function CheckoutScreen({ navigation }: Props) {
 
   return (
     <Screen
+      stickyHeader={<ProgressBar step={4} totalSteps={5} />}
       footer={<CTA label={ctaLabel} loading={submitting} disabled={!formValid} onPress={placeOrder} />}
     >
-      <ProgressBar step={4} totalSteps={5} />
       <ScreenHeader title="Delivery details" onBack={() => navigation.goBack()} />
       <Heading
         title="Choose your delivery address"

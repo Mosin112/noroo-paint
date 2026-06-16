@@ -11,7 +11,16 @@ import { useAuthStore } from './src/state/authStore';
 import { assertEnvOrThrow } from './src/lib/env';
 import { initSentry, wrap as sentryWrap } from './src/lib/sentry';
 import { ErrorBoundary, AppSplash } from './src/components';
+import { usePrefetchProducts } from './src/data/useProducts';
 import { colors } from './src/theme';
+
+// Warms the React Query cache for the product catalogue as soon as
+// QueryClientProvider mounts. Has to live inside the provider, so it's
+// a tiny child component rather than a top-level call.
+function PrefetchWarmer() {
+  usePrefetchProducts();
+  return null;
+}
 
 // Keep the native splash visible while we mount the JS splash. Once the
 // JS one renders, it covers the screen and the native one can hide.
@@ -53,6 +62,7 @@ function App() {
       <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
         <SafeAreaProvider>
           <QueryClientProvider client={queryClient}>
+            <PrefetchWarmer />
             <StatusBar style="dark" />
             <RootNavigator />
             {!splashGone ? <AppSplash onDone={() => setSplashGone(true)} /> : null}

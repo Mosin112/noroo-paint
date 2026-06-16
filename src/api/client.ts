@@ -293,16 +293,18 @@ export type OrderSummary = {
   delivery_mode: 'delivery' | 'pickup';
 };
 
-// Pulls the signed-in user's recent orders for the Account screen. RLS makes
-// sure they only see their own rows. Returns an empty array for guests or
-// when the user is unauthenticated.
-export async function listMyOrders(limit = 10): Promise<OrderSummary[]> {
+// Pulls the signed-in user's orders for the Account → Recent Orders
+// sub-page. RLS makes sure they only see their own rows. Returns an
+// empty array for guests or when the user is unauthenticated. Pass a
+// `limit` for a preview list; omit it (or pass null) to fetch all.
+export async function listMyOrders(limit: number | null = null): Promise<OrderSummary[]> {
   if (USE_SEED) return [];
-  const { data, error } = await supabase!
+  let q = supabase!
     .from('orders')
     .select('id, order_number, total_aud, created_at, delivery_mode')
-    .order('created_at', { ascending: false })
-    .limit(limit);
+    .order('created_at', { ascending: false });
+  if (limit != null) q = q.limit(limit);
+  const { data, error } = await q;
   if (error) throw error;
   return (data ?? []) as OrderSummary[];
 }

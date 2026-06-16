@@ -5,7 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { ShoppingCart, ShoppingBag, User } from 'lucide-react-native';
 
-import type { RootStackParamList, MainTabParamList, ShopStackParamList } from './types';
+import type { RootStackParamList, MainTabParamList, ShopStackParamList, AccountStackParamList } from './types';
 import { useAuthStore } from '../state';
 import { useBasketStore } from '../state/basketStore';
 import { colors, fontFamily } from '../theme';
@@ -19,10 +19,23 @@ import { CheckoutScreen } from '../screens/shop/CheckoutScreen';
 import { OutOfZoneScreen } from '../screens/shop/OutOfZoneScreen';
 import { ConfirmedScreen } from '../screens/shop/ConfirmedScreen';
 import { AccountScreen } from '../screens/account/AccountScreen';
+import { RecentOrdersScreen } from '../screens/account/RecentOrdersScreen';
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const MainTab = createBottomTabNavigator<MainTabParamList>();
 const ShopStack = createNativeStackNavigator<ShopStackParamList>();
+const AccountStack = createNativeStackNavigator<AccountStackParamList>();
+
+// Account tab is its own stack so we can push the Recent Orders
+// sub-page without leaving the tab. AccountHome is the entry.
+function AccountNavigator() {
+  return (
+    <AccountStack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
+      <AccountStack.Screen name="AccountHome"   component={AccountScreen} />
+      <AccountStack.Screen name="RecentOrders"  component={RecentOrdersScreen} />
+    </AccountStack.Navigator>
+  );
+}
 
 function ShopNavigator() {
   return (
@@ -107,7 +120,7 @@ function MainTabs() {
       />
       <MainTab.Screen
         name="Account"
-        component={AccountScreen}
+        component={AccountNavigator}
         options={{ tabBarLabel: 'Account', tabBarIcon: ({ color, size }) => <User size={size} color={color} /> }}
       />
     </MainTab.Navigator>

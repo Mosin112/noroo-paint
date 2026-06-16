@@ -12,10 +12,11 @@ import { colors } from '../theme';
 // wordmark in white/red, "Paint, delivered fast." tagline, three pulsing
 // dots underneath.
 
-// Visible time before the fade kicks in, then a longer + softer fade so
-// the navy doesn't snap to the cool-grey SignIn bg.
-const HOLD_MS = 1500;
-const FADE_MS = 650;
+// Hold for the brand beat, then evacuate fast (ease-in cubic) so the
+// splash doesn't linger at half-opacity over the next screen. Slow fades
+// looked like ghosting on real devices — a sharp exit reads cleaner.
+const HOLD_MS = 1400;
+const FADE_MS = 280;
 
 export function AppSplash({ onDone }: { onDone: () => void }) {
   const fade = useRef(new Animated.Value(1)).current;
@@ -47,14 +48,16 @@ export function AppSplash({ onDone }: { onDone: () => void }) {
         Animated.timing(fade, {
           toValue: 0,
           duration: FADE_MS,
-          // Material-style out curve — slow start, accelerates, soft tail.
-          easing: Easing.bezier(0.4, 0.0, 0.2, 1),
+          // Accel-out: stay opaque longer, then drop quickly. Avoids the
+          // half-opacity ghosting frame where the screen behind shows
+          // through.
+          easing: Easing.bezier(0.55, 0.0, 0.85, 0.3),
           useNativeDriver: true,
         }),
         Animated.timing(cardScale, {
-          toValue: 0.94,
+          toValue: 0.96,
           duration: FADE_MS,
-          easing: Easing.bezier(0.4, 0.0, 0.2, 1),
+          easing: Easing.bezier(0.55, 0.0, 0.85, 0.3),
           useNativeDriver: true,
         }),
       ]).start(({ finished }) => {
