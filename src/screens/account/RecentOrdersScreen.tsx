@@ -7,10 +7,11 @@ import { useAuthStore } from '../../state';
 import { listMyOrders, type OrderSummary } from '../../api/client';
 import type { AccountStackParamList } from '../../navigation/types';
 import { colors, radii, spacing, text } from '../../theme';
+import { OrderCard } from './OrderCard';
 
 // Full list of the signed-in user's past orders. Reached from the
-// Account screen's "Recent orders →" entry. Guests get a sign-in nudge
-// instead of an empty list.
+// Account screen's "See more →" entry under the recent-orders preview.
+// Guests get a sign-in nudge instead of an empty list.
 export function RecentOrdersScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AccountStackParamList>>();
   const mode = useAuthStore((s) => s.mode);
@@ -29,12 +30,12 @@ export function RecentOrdersScreen() {
 
   return (
     <Screen>
-      <ScreenHeader title="Recent orders" onBack={() => navigation.goBack()} />
+      <ScreenHeader title="Your orders" onBack={() => navigation.goBack()} />
       <Heading
-        title="Your orders"
+        title="Recent orders"
         sub={isGuest
           ? 'Guest sessions don’t persist orders — sign in to keep a history.'
-          : 'Every paint order you’ve placed, newest first.'}
+          : 'Tap an order to view details or reorder.'}
       />
 
       {orders === null ? (
@@ -52,31 +53,16 @@ export function RecentOrdersScreen() {
       ) : (
         <View style={styles.list}>
           {orders.map((o) => (
-            <View key={o.id} style={styles.item}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.number}>#{o.order_number}</Text>
-                <Text style={styles.meta}>
-                  {formatOrderDate(o.created_at)} · {o.delivery_mode === 'pickup' ? 'Pickup' : 'Delivery'}
-                </Text>
-              </View>
-              <Text style={styles.total}>${Number(o.total_aud).toFixed(2)}</Text>
-            </View>
+            <OrderCard
+              key={o.id}
+              order={o}
+              onPress={() => navigation.navigate('OrderDetail', { orderId: o.id, orderNumber: o.order_number })}
+            />
           ))}
         </View>
       )}
     </Screen>
   );
-}
-
-// "22 May 2026" — slightly longer than the Account preview so the date
-// is unambiguous when scrolling a longer history.
-function formatOrderDate(iso: string): string {
-  try {
-    const d = new Date(iso);
-    return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
-  } catch {
-    return iso.slice(0, 10);
-  }
 }
 
 const styles = StyleSheet.create({
@@ -88,15 +74,5 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     alignItems: 'flex-start',
   },
-  list: { gap: 0 },
-  item: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.rule2,
-  },
-  number: { fontSize: 14, fontWeight: '700', color: colors.ink },
-  meta: { fontSize: 12, color: colors.muted, marginTop: 2 },
-  total: { fontSize: 14, fontWeight: '700', color: colors.ink },
+  list: { paddingTop: 4 },
 });

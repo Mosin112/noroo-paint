@@ -20,6 +20,7 @@ import { OutOfZoneScreen } from '../screens/shop/OutOfZoneScreen';
 import { ConfirmedScreen } from '../screens/shop/ConfirmedScreen';
 import { AccountScreen } from '../screens/account/AccountScreen';
 import { RecentOrdersScreen } from '../screens/account/RecentOrdersScreen';
+import { OrderDetailScreen } from '../screens/account/OrderDetailScreen';
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const MainTab = createBottomTabNavigator<MainTabParamList>();
@@ -33,6 +34,7 @@ function AccountNavigator() {
     <AccountStack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
       <AccountStack.Screen name="AccountHome"   component={AccountScreen} />
       <AccountStack.Screen name="RecentOrders"  component={RecentOrdersScreen} />
+      <AccountStack.Screen name="OrderDetail"   component={OrderDetailScreen} />
     </AccountStack.Navigator>
   );
 }

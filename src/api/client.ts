@@ -291,22 +291,87 @@ export type OrderSummary = {
   total_aud: number;
   created_at: string;
   delivery_mode: 'delivery' | 'pickup';
+  item_count: number;
 };
 
 // Pulls the signed-in user's orders for the Account → Recent Orders
 // sub-page. RLS makes sure they only see their own rows. Returns an
 // empty array for guests or when the user is unauthenticated. Pass a
 // `limit` for a preview list; omit it (or pass null) to fetch all.
+//
+// item_count comes via PostgREST's embedded count: `order_items(count)`
+// returns `[{count: N}]` per row. We unwrap to a flat number so the UI
+// can render "3 items" without parsing the nested shape.
 export async function listMyOrders(limit: number | null = null): Promise<OrderSummary[]> {
   if (USE_SEED) return [];
   let q = supabase!
     .from('orders')
-    .select('id, order_number, total_aud, created_at, delivery_mode')
+    .select('id, order_number, total_aud, created_at, delivery_mode, order_items(count)')
     .order('created_at', { ascending: false });
   if (limit != null) q = q.limit(limit);
   const { data, error } = await q;
   if (error) throw error;
-  return (data ?? []) as OrderSummary[];
+  type Row = Omit<OrderSummary, 'item_count'> & { order_items?: { count: number }[] };
+  return ((data ?? []) as Row[]).map((r) => ({
+    id: r.id,
+    order_number: r.order_number,
+    total_aud: r.total_aud,
+    created_at: r.created_at,
+    delivery_mode: r.delivery_mode,
+    item_count: r.order_items?.[0]?.count ?? 0,
+  }));
+}
+
+// Detail for a single order — header + items. Used by the Recent Orders
+// detail page (tap a row) and by the Reorder flow. RLS scopes to the
+// caller's own orders.
+export type OrderDetailItem = {
+  id: string;
+  product_id: string | null;            // null if the product was deleted
+  product_name_snapshot: string;
+  tin_size_snapshot: TinSize | null;
+  finish_snapshot: PaintFinish | null;
+  brand: string | null;
+  colour_name: string | null;
+  quantity: number;
+  unit_price_aud: number;
+  line_total_aud: number;
+};
+
+export type OrderDetail = {
+  id: string;
+  order_number: string;
+  created_at: string;
+  status: string;
+  delivery_mode: 'delivery' | 'pickup';
+  customer_name: string;
+  customer_phone: string;
+  delivery_address_line1: string;
+  delivery_suburb: string | null;
+  delivery_postcode: string;
+  subtotal_aud: number;
+  delivery_aud: number;
+  gst_aud: number;
+  total_aud: number;
+  notes: string | null;
+  items: OrderDetailItem[];
+};
+
+export async function getOrderDetail(orderId: string): Promise<OrderDetail | null> {
+  if (USE_SEED) return null;
+  const { data: order, error: oErr } = await supabase!
+    .from('orders')
+    .select('id, order_number, created_at, status, delivery_mode, customer_name, customer_phone, delivery_address_line1, delivery_suburb, delivery_postcode, subtotal_aud, delivery_aud, gst_aud, total_aud, notes')
+    .eq('id', orderId)
+    .maybeSingle();
+  if (oErr) throw oErr;
+  if (!order) return null;
+  const { data: itemRows, error: iErr } = await supabase!
+    .from('order_items')
+    .select('id, product_id, product_name_snapshot, tin_size_snapshot, finish_snapshot, brand, colour_name, quantity, unit_price_aud, line_total_aud')
+    .eq('order_id', orderId);
+  if (iErr) throw iErr;
+  return { ...(order as Omit<OrderDetail, 'items'>), items: (itemRows ?? []) as OrderDetailItem[] };
 }
 
 export async function postOrder(req: OrderRequest): Promise<OrderResponse> {

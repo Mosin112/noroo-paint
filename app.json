@@ -9,7 +9,7 @@
     "userInterfaceStyle": "light",
     "backgroundColor": "#F5F7FB",
     "splash": {
-      "image": "./assets/splash-navy-blank.png",
+      "image": "./assets/splash-noroo.png",
       "resizeMode": "cover",
       "backgroundColor": "#1F365C"
     },
@@ -28,7 +28,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "splash": {
-        "image": "./assets/splash-navy-blank.png",
+        "image": "./assets/splash-noroo.png",
         "resizeMode": "cover",
         "backgroundColor": "#1F365C"
       },
@@ -42,7 +42,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/splash-navy-blank.png",
+          "image": "./assets/splash-noroo.png",
           "resizeMode": "cover",
           "backgroundColor": "#1F365C"
         }

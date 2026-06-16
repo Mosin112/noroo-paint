@@ -46,6 +46,7 @@ export type ShopStackParamList = {
 export type AccountStackParamList = {
   AccountHome: undefined;
   RecentOrders: undefined;
+  OrderDetail: { orderId: string; orderNumber: string };
 };
 
 export type MainTabParamList = {

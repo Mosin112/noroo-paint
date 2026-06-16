@@ -3,35 +3,29 @@ import { View, Text, Image, Animated, Easing, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../theme';
 
-// Single splash. The native Android splash is a flat navy fill (no
-// artwork) — see app.json. When JS mounts, this component paints over
-// it; the content (Noroo card, PAINT EXPRESS wordmark, tagline, dots)
-// FADES IN from the same navy in ~280ms so there is no perceived jump
-// from native → JS. After a short hold, the whole splash dissolves into
-// the SignIn screen with another short fade.
-//
-// The result is: solid navy frame → navy + content fades in → navy +
-// content holds → fades out to SignIn. No image-mismatch flash, no
-// "two splash screens".
+// Single splash. The native Android splash is a composite that matches
+// THIS component's static frame pixel-for-pixel (see app.json →
+// assets/splash-noroo.png). The user therefore sees one continuous
+// splash: native paints it during JS bundle load, this component mounts
+// on top with identical content, the dots start pulsing, then it
+// dissolves into SignIn. No fade-in (would create a swap-flash because
+// native is already at full opacity), only a smooth fade-out.
 
-const FADE_IN_MS = 260;
-const HOLD_MS = 1100;
-const FADE_OUT_MS = 320;
+const HOLD_MS = 1200;
+const FADE_OUT_MS = 380;
 
 export function AppSplash({ onDone }: { onDone: () => void }) {
   // Whole-wrap opacity for the exit fade (1 → 0).
   const fade = useRef(new Animated.Value(1)).current;
-  // Content opacity for the entrance fade (0 → 1). Wrap is navy from
-  // frame one so the user sees solid navy, then the artwork appears.
-  const contentFade = useRef(new Animated.Value(0)).current;
-  // Tiny scale-up on the card during the entrance + slight scale-down
-  // on exit so the splash feels like it materialises and recedes
-  // instead of popping.
-  const cardScale = useRef(new Animated.Value(0.92)).current;
-  // Three dots that pulse out-of-phase.
-  const dot1 = useRef(new Animated.Value(0.3)).current;
-  const dot2 = useRef(new Animated.Value(0.3)).current;
-  const dot3 = useRef(new Animated.Value(0.3)).current;
+  // Tiny scale-down on the card during exit so the splash feels like
+  // it recedes into the SignIn screen rather than blinking off.
+  const cardScale = useRef(new Animated.Value(1)).current;
+  // Three dots that pulse out-of-phase. Resting opacity 0.4 matches the
+  // native composite, so when JS takes over the dots are already at
+  // their visible "dim" state and start animating from there.
+  const dot1 = useRef(new Animated.Value(0.4)).current;
+  const dot2 = useRef(new Animated.Value(0.4)).current;
+  const dot3 = useRef(new Animated.Value(0.4)).current;
 
   useEffect(() => {
     function pulse(value: Animated.Value, delay: number) {
@@ -39,7 +33,7 @@ export function AppSplash({ onDone }: { onDone: () => void }) {
         Animated.sequence([
           Animated.delay(delay),
           Animated.timing(value, { toValue: 1, duration: 600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-          Animated.timing(value, { toValue: 0.3, duration: 600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(value, { toValue: 0.4, duration: 600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
         ]),
       );
     }
@@ -48,46 +42,31 @@ export function AppSplash({ onDone }: { onDone: () => void }) {
     const c = pulse(dot3, 400);
     a.start(); b.start(); c.start();
 
-    // Entrance: artwork fades in from navy + card eases up to 1.0.
-    Animated.parallel([
-      Animated.timing(contentFade, {
-        toValue: 1,
-        duration: FADE_IN_MS,
-        easing: Easing.bezier(0.0, 0.0, 0.2, 1),
-        useNativeDriver: true,
-      }),
-      Animated.timing(cardScale, {
-        toValue: 1,
-        duration: FADE_IN_MS,
-        easing: Easing.bezier(0.0, 0.0, 0.2, 1),
-        useNativeDriver: true,
-      }),
-    ]).start();
-
     const t = setTimeout(() => {
       Animated.parallel([
         Animated.timing(fade, {
           toValue: 0,
           duration: FADE_OUT_MS,
-          easing: Easing.bezier(0.4, 0.0, 0.6, 1),
+          // Standard material out curve — quick at first, soft landing.
+          easing: Easing.bezier(0.4, 0.0, 0.2, 1),
           useNativeDriver: true,
         }),
         Animated.timing(cardScale, {
-          toValue: 0.97,
+          toValue: 0.96,
           duration: FADE_OUT_MS,
-          easing: Easing.bezier(0.4, 0.0, 0.6, 1),
+          easing: Easing.bezier(0.4, 0.0, 0.2, 1),
           useNativeDriver: true,
         }),
       ]).start(({ finished }) => {
         if (finished) onDone();
       });
-    }, FADE_IN_MS + HOLD_MS);
+    }, HOLD_MS);
 
     return () => {
       clearTimeout(t);
       a.stop(); b.stop(); c.stop();
     };
-  }, [cardScale, contentFade, dot1, dot2, dot3, fade, onDone]);
+  }, [cardScale, dot1, dot2, dot3, fade, onDone]);
 
   return (
     <Animated.View style={[styles.wrap, { opacity: fade }]} pointerEvents="none">
@@ -98,26 +77,24 @@ export function AppSplash({ onDone }: { onDone: () => void }) {
         end={{ x: 0.5, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
-      <Animated.View style={[styles.content, { opacity: contentFade }]}>
-        <Animated.View style={[styles.card, { transform: [{ scale: cardScale }] }]}>
-          <Image
-            source={require('../../assets/noroo-paint-logo.png')}
-            style={styles.logo}
-            resizeMode="contain"
-            accessibilityLabel="Noroo Paint"
-          />
-        </Animated.View>
-        <View style={styles.wordmarkRow}>
-          <Text style={[styles.wordmark, styles.wordmarkPaint]}>PAINT</Text>
-          <Text style={[styles.wordmark, styles.wordmarkExpress]}> EXPRESS</Text>
-        </View>
-        <Text style={styles.tagline}>Paint, delivered fast.</Text>
-        <View style={styles.dotsRow}>
-          <Animated.View style={[styles.dot, { opacity: dot1 }]} />
-          <Animated.View style={[styles.dot, { opacity: dot2 }]} />
-          <Animated.View style={[styles.dot, { opacity: dot3 }]} />
-        </View>
+      <Animated.View style={[styles.card, { transform: [{ scale: cardScale }] }]}>
+        <Image
+          source={require('../../assets/noroo-paint-logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+          accessibilityLabel="Noroo Paint"
+        />
       </Animated.View>
+      <View style={styles.wordmarkRow}>
+        <Text style={[styles.wordmark, styles.wordmarkPaint]}>PAINT</Text>
+        <Text style={[styles.wordmark, styles.wordmarkExpress]}> EXPRESS</Text>
+      </View>
+      <Text style={styles.tagline}>Paint, delivered fast.</Text>
+      <View style={styles.dotsRow}>
+        <Animated.View style={[styles.dot, { opacity: dot1 }]} />
+        <Animated.View style={[styles.dot, { opacity: dot2 }]} />
+        <Animated.View style={[styles.dot, { opacity: dot3 }]} />
+      </View>
     </Animated.View>
   );
 }
@@ -132,9 +109,6 @@ const styles = StyleSheet.create({
     zIndex: 999,
     elevation: 999,
   },
-  // Container around all the art so we can fade it in over the navy
-  // backdrop without re-animating the navy itself.
-  content: { alignItems: 'center', justifyContent: 'center' },
   card: {
     width: 220, height: 220,
     backgroundColor: '#fff',

@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Alert as RNAlert } from 'react-native';
 import { Check } from 'lucide-react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   Screen, ScreenHeader, Heading, Field, CTA, Summary, ProgressBar, Alert,
   SegmentControl,
@@ -10,6 +11,7 @@ import {
 import { useBasketStore, calculateTotals } from '../../state';
 import { useUserStore } from '../../state/userStore';
 import { useAuthStore } from '../../state/authStore';
+import { usePendingCheckoutStore } from '../../state/pendingCheckoutStore';
 import { checkZone, postOrder, sendOrderEmail } from '../../api/client';
 import { PICKUP_LOCATION, type DeliveryMode } from '../../types/domain';
 import type { ShopStackParamList } from '../../navigation/types';
@@ -49,6 +51,29 @@ export function CheckoutScreen({ navigation }: Props) {
   const [zoneStatus, setZoneStatus] = useState<ZoneStatus>('idle');
   const inZone = zoneStatus === 'in-zone';
   const [submitting, setSubmitting] = useState(false);
+
+  // Reorder hand-off: if a past-order Reorder action seeded the
+  // pendingCheckout store, drop those values straight into the form so
+  // the user doesn't have to retype anything. Uses useFocusEffect (not
+  // useEffect) because navigating back to Checkout from OrderDetail
+  // re-uses the existing screen instance — mount-only effects don't
+  // re-run, so a second reorder would silently ignore the new hint.
+  // The hint self-clears on consume so a regular Checkout focus is a
+  // no-op.
+  useFocusEffect(
+    useCallback(() => {
+      const hint = usePendingCheckoutStore.getState().consume();
+      if (!hint) return;
+      setMode(hint.mode);
+      if (hint.name !== undefined) setName(hint.name);
+      if (hint.phone !== undefined) setPhone(hint.phone);
+      if (hint.line1 !== undefined) setLine1(hint.line1);
+      if (hint.line2 !== undefined) setLine2(hint.line2);
+      if (hint.suburb !== undefined) setSuburb(hint.suburb);
+      if (hint.postcode !== undefined) setPostcode(hint.postcode);
+      if (hint.notes !== undefined) setNotes(hint.notes);
+    }, []),
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -208,7 +233,12 @@ export function CheckoutScreen({ navigation }: Props) {
       stickyHeader={<ProgressBar step={4} totalSteps={5} />}
       footer={<CTA label={ctaLabel} loading={submitting} disabled={!formValid} onPress={placeOrder} />}
     >
-      <ScreenHeader title="Delivery details" onBack={() => navigation.goBack()} />
+      {/* Back always lands on Basket, not the previous stack entry.
+          On the normal flow goBack() would do the same, but the Reorder
+          hand-off enters Checkout directly without a Basket frame
+          underneath — explicit navigate gives both paths the same
+          "review your items" detour. */}
+      <ScreenHeader title="Delivery details" onBack={() => navigation.navigate('Basket')} />
       <Heading
         title="Choose your delivery address"
         sub="Enter your address — to organise delivery, or select to pick up from the store."

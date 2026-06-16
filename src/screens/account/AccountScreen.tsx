@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, ActivityIndicator, Alert as RNAlert } from 'react-native';
-import { Check, X, ChevronRight } from 'lucide-react-native';
+import { Check, ChevronRight } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Screen, ScreenHeader, Heading, Field, CTA, SavedColourChip } from '../../components';
-import { useAuthStore, useSavedColoursStore } from '../../state';
+import { Screen, ScreenHeader, Heading, Field, CTA } from '../../components';
+import { useAuthStore } from '../../state';
 import { useUserStore } from '../../state/userStore';
-import { deleteAccount } from '../../api/client';
+import { deleteAccount, listMyOrders, type OrderSummary } from '../../api/client';
 import type { AccountStackParamList } from '../../navigation/types';
 import { colors, radii, spacing, text } from '../../theme';
+import { OrderCard } from './OrderCard';
 
 // Joins "<address line>" and "<postcode>" the way the Account UI presents.
 function formatAddress(line1: string, postcode: string): string {
@@ -38,9 +39,6 @@ export function AccountScreen() {
   const mode = useAuthStore((s) => s.mode);
   const signOut = useAuthStore((s) => s.signOut);
 
-  const savedColours = useSavedColoursStore((s) => s.colours);
-  const removeColour = useSavedColoursStore((s) => s.remove);
-
   const profile = useUserStore((s) => s.profile);
   const defaultAddress = useUserStore((s) => s.defaultAddress);
   const saveProfile = useUserStore((s) => s.saveProfile);
@@ -58,6 +56,19 @@ export function AccountScreen() {
   const [contactSaving, setContactSaving] = useState(false);
   const [addressJustSaved, setAddressJustSaved] = useState(false);
   const [contactJustSaved, setContactJustSaved] = useState(false);
+
+  // Recent-orders preview: top 3 only. The "See more →" row underneath
+  // opens the full list. Guests get a sign-in nudge instead of an empty
+  // preview — no Supabase session means there's nothing scoped to them.
+  const [recent, setRecent] = useState<OrderSummary[] | null>(null);
+  useEffect(() => {
+    if (isGuest) { setRecent([]); return; }
+    let cancelled = false;
+    listMyOrders(3)
+      .then((rows) => { if (!cancelled) setRecent(rows); })
+      .catch(() => { if (!cancelled) setRecent([]); });
+    return () => { cancelled = true; };
+  }, [isGuest, profile?.id]);
 
   // Sync from the store whenever it (re)hydrates. No prototype fallback —
   // guest mode also starts empty so users type their own details.
@@ -223,67 +234,92 @@ export function AccountScreen() {
         }
       />
 
-      <Text style={[text.fieldLabel, { marginTop: 12, marginBottom: 6 }]}>SAVED COLOURS</Text>
-      <View style={styles.savedRow}>
-        {savedColours.length === 0 ? (
-          <Text style={[text.alertBody, { color: colors.muted }]}>None saved yet.</Text>
-        ) : (
-          savedColours.map((c) => (
-            <View key={c.id} style={styles.savedItem}>
-              <SavedColourChip brand={c.brand} colourName={c.colour_name} />
-              <Pressable onPress={() => removeColour(c.id)} hitSlop={6} style={styles.x}>
-                <X size={12} color={colors.muted} />
-              </Pressable>
-            </View>
-          ))
-        )}
-      </View>
+      {/* Saved colours used to surface here, but the Account screen is the
+          wrong place for them — users were treating them like saved
+          favourites instead of a typing shortcut. They still appear on the
+          Colour step when the user has any past picks. */}
 
-      <Text style={[text.fieldLabel, { marginTop: 18, marginBottom: 6 }]}>ORDERS</Text>
-      <Pressable
-        onPress={() => navigation.navigate('RecentOrders')}
-        disabled={isGuest}
-        android_ripple={isGuest ? undefined : { color: colors.rule2 }}
-        style={({ pressed }) => [
-          styles.entryRow,
-          pressed && !isGuest && styles.entryRowPressed,
-          isGuest && styles.entryRowDisabled,
-        ]}
-      >
-        <View style={{ flex: 1 }}>
-          <Text style={styles.entryTitle}>Recent orders</Text>
-          <Text style={styles.entrySub}>
-            {isGuest
-              ? 'Sign in to keep an order history.'
-              : 'See every paint order you’ve placed.'}
-          </Text>
+      <Text style={[text.fieldLabel, { marginTop: 18, marginBottom: 10 }]}>RECENT ORDERS</Text>
+      {isGuest ? (
+        <View style={styles.guestNudge}>
+          <Text style={styles.guestNudgeText}>Sign in to keep an order history across installs.</Text>
         </View>
-        <ChevronRight size={18} color={isGuest ? colors.muted : colors.navy} />
-      </Pressable>
+      ) : recent === null ? (
+        <View style={styles.previewLoading}>
+          <ActivityIndicator color={colors.navy} />
+        </View>
+      ) : recent.length === 0 ? (
+        <View style={styles.previewEmpty}>
+          <Text style={text.rowSubtitle}>No orders yet — they'll appear here after your first checkout.</Text>
+        </View>
+      ) : (
+        <>
+          {recent.map((o) => (
+            <OrderCard
+              key={o.id}
+              order={o}
+              onPress={() => navigation.navigate('OrderDetail', { orderId: o.id, orderNumber: o.order_number })}
+            />
+          ))}
+          {/* See more → opens the full Recent Orders sub-page. Only shown
+              when we actually have orders to show; hidden if the user has
+              ≤3 orders and the preview already lists them all. */}
+          {recent.length >= 3 && (
+            <Pressable
+              onPress={() => navigation.navigate('RecentOrders')}
+              android_ripple={{ color: colors.rule2 }}
+              hitSlop={8}
+              style={({ pressed }) => [styles.seeMore, pressed && styles.seeMorePressed]}
+            >
+              <Text style={styles.seeMoreText}>See more</Text>
+              <ChevronRight size={16} color={colors.navy} />
+            </Pressable>
+          )}
+        </>
+      )}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  savedRow: { flexDirection: 'row', flexWrap: 'wrap' },
-  savedItem: { flexDirection: 'row', alignItems: 'center', marginRight: 6 },
-  x: { padding: 4, marginLeft: -8, marginRight: 8 },
-  // Tappable row that opens the Recent Orders sub-page. Same field-style
-  // chrome as the editable rows above so the screen reads as one list.
-  entryRow: {
-    flexDirection: 'row',
+  // Recent-orders preview chrome (cards live in OrderCard.tsx; these are
+  // the surrounding states + the "See more" tail row).
+  previewLoading: {
+    paddingVertical: 22,
     alignItems: 'center',
+  },
+  previewEmpty: {
     borderWidth: 1,
     borderColor: colors.fieldBorder,
     borderRadius: radii.field,
-    paddingVertical: spacing.fieldV,
+    paddingVertical: 14,
     paddingHorizontal: spacing.fieldH,
     backgroundColor: '#fff',
   },
-  entryRowPressed: { backgroundColor: colors.tint },
-  entryRowDisabled: { opacity: 0.55 },
-  entryTitle: { fontSize: 13, fontWeight: '700', color: colors.ink },
-  entrySub: { fontSize: 11, color: colors.muted, marginTop: 2 },
+  guestNudge: {
+    borderWidth: 1,
+    borderColor: colors.fieldBorder,
+    borderRadius: radii.field,
+    paddingVertical: 14,
+    paddingHorizontal: spacing.fieldH,
+    backgroundColor: '#fff',
+  },
+  guestNudgeText: { fontSize: 13, color: colors.muted },
+  seeMore: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    marginTop: 2,
+    marginBottom: 8,
+  },
+  seeMorePressed: { opacity: 0.5 },
+  seeMoreText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.navy,
+    marginRight: 4,
+  },
   deleteWrap: { alignItems: 'center', paddingVertical: 8, paddingHorizontal: 18, marginBottom: 8 },
   deleteText: { color: colors.warn, fontSize: 12, fontWeight: '500' },
   tick: {
