@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Trash2, ShoppingBag, PaintBucket } from 'lucide-react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
-  Screen, ScreenHeader, Heading, CTA, Summary, FooterLink,
+  Screen, ScreenHeader, Heading, CTA, Summary,
   QtyStepper, ProgressBar, type SummaryLine,
 } from '../../components';
 import { useBasketStore, calculateTotals } from '../../state';
@@ -50,10 +50,7 @@ export function BasketScreen({ navigation }: Props) {
         empty ? (
           <CTA label="Browse paints" onPress={() => navigation.navigate('Where')} />
         ) : (
-          <>
-            <CTA label="Continue to checkout" onPress={() => navigation.navigate('Checkout')} />
-            <FooterLink label="+ Add another product" onPress={() => navigation.navigate('Where')} />
-          </>
+          <CTA label="Continue to checkout" onPress={() => navigation.navigate('Checkout')} />
         )
       }
     >
@@ -118,9 +115,22 @@ export function BasketScreen({ navigation }: Props) {
       )}
 
       {!empty && (
-        <View style={{ marginTop: 14 }}>
-          <Summary lines={lines} />
-        </View>
+        <>
+          {/* "+ Add another product" lives inline above the totals (per the
+              v2.6 mock) so adding a second item is the obvious next move
+              while you're still reading the basket. The dashed border is
+              the visual cue that it's a discoverable action, not a CTA. */}
+          <Pressable
+            onPress={() => navigation.navigate('Where')}
+            android_ripple={{ color: colors.tint }}
+            style={({ pressed }) => [styles.addAnother, pressed && styles.addAnotherPressed]}
+          >
+            <Text style={styles.addAnotherText}>+ Add another product</Text>
+          </Pressable>
+          <View style={{ marginTop: 14 }}>
+            <Summary lines={lines} />
+          </View>
+        </>
       )}
     </Screen>
   );
@@ -162,4 +172,21 @@ const styles = StyleSheet.create({
   priceRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   lineTotal: { fontSize: 13, fontWeight: '700', color: colors.ink },
   trash: { padding: 2 },
+  // Dashed-border "+ Add another product" row, sits between items and the
+  // totals summary. Centred text, navy ink — visually quieter than the
+  // primary CTA so it doesn't compete for attention.
+  addAnother: {
+    borderWidth: 1.5,
+    borderColor: colors.rule,
+    borderStyle: 'dashed',
+    borderRadius: 14,
+    paddingVertical: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 6,
+    marginBottom: 4,
+    backgroundColor: 'transparent',
+  },
+  addAnotherPressed: { backgroundColor: colors.tint },
+  addAnotherText: { fontSize: 14, fontWeight: '700', color: colors.navy, letterSpacing: 0.1 },
 });
