@@ -24,14 +24,6 @@ function parseAddress(combined: string): { line1: string; postcode: string } {
   return { line1, postcode };
 }
 
-function formatContact(name: string | null, phone: string | null): string {
-  if (!name && !phone) return '';
-  return [name, phone].filter(Boolean).join(' · ');
-}
-function parseContact(combined: string): { full_name: string; phone: string } {
-  const [name, ...rest] = combined.split('·').map((s) => s.trim());
-  return { full_name: name ?? '', phone: rest.join(' · ').replace(/\s/g, '') };
-}
 
 export function AccountScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AccountStackParamList>>();
@@ -50,12 +42,15 @@ export function AccountScreen() {
   // tick button next to the field (no autosave on blur — too easy to
   // half-type and lose work).
   const [address, setAddress] = useState('');
-  const [contact, setContact] = useState('');
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [addressSaving, setAddressSaving] = useState(false);
-  const [contactSaving, setContactSaving] = useState(false);
+  const [nameSaving, setNameSaving] = useState(false);
+  const [phoneSaving, setPhoneSaving] = useState(false);
   const [addressJustSaved, setAddressJustSaved] = useState(false);
-  const [contactJustSaved, setContactJustSaved] = useState(false);
+  const [nameJustSaved, setNameJustSaved] = useState(false);
+  const [phoneJustSaved, setPhoneJustSaved] = useState(false);
 
   // Recent-orders preview: top 3 only. The "See more →" row underneath
   // opens the full list. Guests get a sign-in nudge instead of an empty
@@ -77,17 +72,20 @@ export function AccountScreen() {
   }, [defaultAddress]);
 
   useEffect(() => {
-    setContact(profile ? formatContact(profile.full_name, profile.phone) : '');
+    setName(profile?.full_name ?? '');
+    setPhone(profile?.phone ?? '');
   }, [profile]);
 
-  // Truthy address change since last save? Used to decide whether the tick
-  // is "ready to save" (accent) or "already saved" (muted/check).
+  // Truthy change since last save? Used to decide whether the tick is
+  // "ready to save" (accent/green) or "already saved" (muted/check).
   const savedAddress = defaultAddress
     ? formatAddress(defaultAddress.line1, defaultAddress.postcode)
     : '';
   const addressDirty = address.trim() !== savedAddress.trim();
-  const savedContact = profile ? formatContact(profile.full_name, profile.phone) : '';
-  const contactDirty = contact.trim() !== savedContact.trim();
+  const savedName = profile?.full_name ?? '';
+  const savedPhone = profile?.phone ?? '';
+  const nameDirty = name.trim() !== savedName.trim();
+  const phoneDirty = phone.replace(/\s/g, '') !== savedPhone.replace(/\s/g, '');
 
   const persistAddress = async () => {
     if (isGuest) {
@@ -111,25 +109,48 @@ export function AccountScreen() {
     }
   };
 
-  const persistContact = async () => {
+  const persistName = async () => {
     if (isGuest) {
       RNAlert.alert('Sign in to save', 'Guest sessions don’t persist details — sign in to keep them across installs.');
       return;
     }
-    const { full_name, phone } = parseContact(contact);
-    if (!full_name && !phone) {
-      RNAlert.alert('Enter your name and phone', 'Format: Name · 0400 000 000');
+    const full_name = name.trim();
+    if (!full_name) {
+      RNAlert.alert('Name needed', 'Enter your full name before saving.');
       return;
     }
-    setContactSaving(true);
+    setNameSaving(true);
     try {
-      await saveProfile({ full_name, phone });
-      setContactJustSaved(true);
-      setTimeout(() => setContactJustSaved(false), 2000);
+      // Preserve the phone we already have on file; we only edit one side here.
+      await saveProfile({ full_name, phone: savedPhone });
+      setNameJustSaved(true);
+      setTimeout(() => setNameJustSaved(false), 2000);
     } catch (e) {
-      RNAlert.alert("Couldn't save details", e instanceof Error ? e.message : 'Try again.');
+      RNAlert.alert("Couldn't save name", e instanceof Error ? e.message : 'Try again.');
     } finally {
-      setContactSaving(false);
+      setNameSaving(false);
+    }
+  };
+
+  const persistPhone = async () => {
+    if (isGuest) {
+      RNAlert.alert('Sign in to save', 'Guest sessions don’t persist details — sign in to keep them across installs.');
+      return;
+    }
+    const cleanPhone = phone.replace(/\s/g, '');
+    if (!cleanPhone) {
+      RNAlert.alert('Phone needed', 'Enter your phone number before saving.');
+      return;
+    }
+    setPhoneSaving(true);
+    try {
+      await saveProfile({ full_name: savedName, phone: cleanPhone });
+      setPhoneJustSaved(true);
+      setTimeout(() => setPhoneJustSaved(false), 2000);
+    } catch (e) {
+      RNAlert.alert("Couldn't save phone", e instanceof Error ? e.message : 'Try again.');
+    } finally {
+      setPhoneSaving(false);
     }
   };
 
@@ -204,9 +225,39 @@ export function AccountScreen() {
       <ScreenHeader title="Account" />
       <Heading title="Your account" sub={isGuest ? 'Guest mode — sign in to keep your details across installs.' : undefined} />
 
+      <Field
+        label="Name"
+        value={name}
+        onChangeText={setName}
+        placeholder="Your full name"
+        autoCapitalize="words"
+        trailingAction={
+          <SaveTick
+            ready={nameDirty && name.trim().length > 0}
+            saving={nameSaving}
+            justSaved={nameJustSaved}
+            onPress={persistName}
+          />
+        }
+      />
       <Field label="Email" readonlyValue={email ?? '—'} />
       <Field
-        label="Delivery address"
+        label="Phone number"
+        value={phone}
+        onChangeText={setPhone}
+        placeholder="0400 000 000"
+        keyboardType="phone-pad"
+        trailingAction={
+          <SaveTick
+            ready={phoneDirty && phone.replace(/\s/g, '').length > 0}
+            saving={phoneSaving}
+            justSaved={phoneJustSaved}
+            onPress={persistPhone}
+          />
+        }
+      />
+      <Field
+        label="Address"
         value={address}
         onChangeText={setAddress}
         placeholder="14 Mill Lane, Joondalup 6027"
@@ -216,20 +267,6 @@ export function AccountScreen() {
             saving={addressSaving}
             justSaved={addressJustSaved}
             onPress={persistAddress}
-          />
-        }
-      />
-      <Field
-        label="Name & phone"
-        value={contact}
-        onChangeText={setContact}
-        placeholder="Your name · 0400 000 000"
-        trailingAction={
-          <SaveTick
-            ready={contactDirty && contact.trim().length > 0}
-            saving={contactSaving}
-            justSaved={contactJustSaved}
-            onPress={persistContact}
           />
         }
       />
@@ -330,6 +367,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  tickReady: { backgroundColor: colors.accent },
+  // Green for "ready to save" — red read as "warning / wrong" in user
+  // testing. Once saved, we keep the same green for the brief justSaved
+  // confirmation pulse so the colour change reinforces "yes, persisted".
+  tickReady: { backgroundColor: colors.good },
   tickDone: { backgroundColor: colors.good },
 });

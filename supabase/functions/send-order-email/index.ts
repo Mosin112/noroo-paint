@@ -147,7 +147,7 @@ function buildHtml(p: Payload, kind: Kind): string {
         <div style="font-size:13px; color:#384663; margin-top:3px; line-height:1.5;">
           ${p.address?.line1 ? escape(p.address.line1) : ''}${p.address?.line2 ? `<br>${escape(p.address.line2)}` : ''}<br>${escape(`${p.address?.suburb ?? ''} ${p.address?.postcode ?? ''}`.trim())}<br>${escape(p.customerPhone)}
         </div>
-        <div style="display:inline-block; margin-top:10px; font-size:12px; font-weight:700; color:#1b7a4b; background:#e7f4ee; padding:6px 10px; border-radius:8px;">Free within Perth Metro &middot; usually next business day</div>
+        <div style="display:inline-block; margin-top:10px; font-size:12px; font-weight:700; color:#1b7a4b; background:#e7f4ee; padding:6px 10px; border-radius:8px;">Free within Perth Metro, usually same business day</div>
       </div>`;
 
   const notesBlock = p.notes
@@ -289,7 +289,7 @@ Deno.serve(async (req: Request) => {
   const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
   const TO_EMAIL = Deno.env.get('ORDER_NOTIFICATION_EMAIL');
-  const FROM = Deno.env.get('ORDER_FROM_EMAIL') ?? 'Paint Express <orders@axepayments.co>';
+  const FROM = Deno.env.get('ORDER_FROM_EMAIL') ?? 'Paint Express <info@paintexpress.com.au>';
 
   if (!RESEND_API_KEY) return json(500, { error: 'Server missing RESEND_API_KEY.' });
   if (!TO_EMAIL) return json(500, { error: 'Server missing ORDER_NOTIFICATION_EMAIL.' });
@@ -331,7 +331,7 @@ Deno.serve(async (req: Request) => {
   // one; the order still goes through.
   let customerRes: Awaited<ReturnType<typeof sendOne>> | { ok: true; skipped: true } = { ok: true, skipped: true };
   if (body.customerEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.customerEmail)) {
-    const customerSubject = `Order received — Paint Express #${body.orderNumber}`;
+    const customerSubject = `Thank you for your order! - Paint Express #${body.orderNumber}`;
     customerRes = await sendOne({
       apiKey: RESEND_API_KEY,
       from: FROM,

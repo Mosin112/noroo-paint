@@ -14,26 +14,21 @@ type Props = {
 // Primary CTA: red vertical gradient + faint top highlight. Ghost CTA:
 // white bg, navy border + text.
 //
-// Layering — the touch surface is the Pressable itself, not an overlay
-// on top of it. Earlier attempts kept the Pressable as a child of the
-// gradient frame (and later, on top of it via absoluteFill) — both
-// patterns left Android's tap region collapsing to the <Text> child on
-// some devices, so periphery taps died.
-//
-// The current pattern:
-//   <View wrap>              ← provides outer padding from screen edges
-//     <View shadowHost>      ← carries the iOS shadow / Android elevation.
-//                              No overflow:'hidden' so the shadow renders.
-//       <Pressable button>   ← THIS is the touch surface. Has the radius,
-//                              overflow:'hidden' (to clip the gradient),
-//                              padding (for height) — its layout box equals
-//                              the visible button.
-//         <LinearGradient pointerEvents="none" />
-//         <topHighlight pointerEvents="none" />
-//         <Text>label</Text>
-//       </Pressable>
-//     </View>
-//   </View>
+// Tap-region notes (the bit that keeps biting on Android):
+//   - The Pressable carries NO overflow:'hidden'. RN-Android collapses
+//     the touch region of a Pressable that has overflow:'hidden' on
+//     some devices, killing periphery taps even when the visible bg
+//     is full-width.
+//   - The gradient + top highlight live inside an inner clipper <View>
+//     that owns the borderRadius + overflow:'hidden'. That View is
+//     pointerEvents:'none' so it cannot capture taps under any
+//     circumstances.
+//   - collapsable={false} on the Pressable stops Android from merging
+//     it into a parent ViewGroup — another known hit-testing pitfall
+//     with elevated, clipped views.
+//   - Shadow lives on a sibling <View> (shadowHost) that wraps the
+//     Pressable. iOS shadows need a solid bg + no clipping on the
+//     shadow-carrier — keeping it on a separate view sidesteps that.
 
 export function CTA({ label, onPress, variant = 'primary', disabled, loading }: Props) {
   const isGhost = variant === 'ghost';
@@ -44,7 +39,9 @@ export function CTA({ label, onPress, variant = 'primary', disabled, loading }: 
         <Pressable
           onPress={onPress}
           disabled={isInactive}
-          android_ripple={isInactive ? undefined : { color: isGhost ? colors.tint : '#cd1017' }}
+          collapsable={false}
+          android_ripple={isInactive ? undefined : { color: isGhost ? colors.tint : '#cd1017', borderless: false }}
+          hitSlop={4}
           style={({ pressed }) => [
             styles.button,
             isGhost ? styles.ghost : styles.primary,
@@ -53,7 +50,7 @@ export function CTA({ label, onPress, variant = 'primary', disabled, loading }: 
           ]}
         >
           {!isGhost ? (
-            <>
+            <View pointerEvents="none" style={styles.clipFill}>
               <LinearGradient
                 pointerEvents="none"
                 colors={['#f2333d', '#e5141b', '#cd1017']}
@@ -63,7 +60,7 @@ export function CTA({ label, onPress, variant = 'primary', disabled, loading }: 
                 style={[StyleSheet.absoluteFill, styles.noTouch]}
               />
               <View pointerEvents="none" style={[styles.topHighlight, styles.noTouch]} />
-            </>
+            </View>
           ) : null}
           {loading ? (
             <ActivityIndicator color={isGhost ? colors.navy : '#fff'} />
@@ -82,36 +79,34 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.ctaMarginH,
     paddingBottom: spacing.ctaMarginV,
   },
-  // Shadow lives here. Needs a solid bg + borderRadius + NO overflow:hidden
-  // for iOS to paint the shadow. backgroundColor matches the primary
-  // button colour so the shadow tint reads correctly when the button
-  // is visible.
   shadowHost: {
     borderRadius: radii.cta,
     backgroundColor: colors.accent,
   },
-  // The actual touch surface. Pressable's hit region equals this layout
-  // box on every platform — full-width via alignSelf:stretch, clipped to
-  // the radius via overflow:'hidden'. Padding gives it height; no
-  // absolute positioning involved.
+  // The visible button + the touch surface. NO overflow here.
   button: {
     alignSelf: 'stretch',
     borderRadius: radii.cta,
-    overflow: 'hidden',
     paddingVertical: spacing.ctaPad + 1,
     paddingHorizontal: spacing.ctaPad,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 48,
   },
-  primary: { backgroundColor: colors.accent },   // solid fallback under the gradient
+  primary: { backgroundColor: colors.accent },
   ghost: {
     backgroundColor: '#fff',
     borderWidth: 1.5,
     borderColor: colors.rule,
   },
-  // 1px white highlight along the very top — fakes the inset highlight
-  // RN doesn't support natively.
+  // Inner clipper — owns the radius + overflow so the gradient gets
+  // masked without putting overflow:'hidden' on the Pressable itself.
+  clipFill: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    borderRadius: radii.cta,
+    overflow: 'hidden',
+  },
   topHighlight: {
     position: 'absolute',
     top: 0, left: 0, right: 0, height: 1,

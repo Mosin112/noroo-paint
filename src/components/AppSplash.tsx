@@ -18,8 +18,13 @@ import { colors } from '../theme';
 //
 // After a short hold, the splash fades out into SignIn.
 
-const HOLD_AFTER_INTRO_MS = 900;
-const FADE_OUT_MS = 320;
+// Halved from 900ms — the intro animations carry their own visual
+// "beat", and customers were waiting too long after they landed.
+const HOLD_AFTER_INTRO_MS = 450;
+// Slightly longer fade than before so the content has room to glide
+// instead of cutting; combined with the translate-up + scale-down
+// below, the exit reads as one continuous "ascend into the app".
+const FADE_OUT_MS = 460;
 // Pull the prototype's curves out so the timing reads at a glance.
 const DISC_DURATION = 700;
 const WORD_DURATION = 550;
@@ -32,6 +37,11 @@ const FADE_UP_EASING = Easing.bezier(0.0, 0.0, 0.2, 1);
 export function AppSplash({ onDone }: { onDone: () => void }) {
   // Exit fade for the whole wrap (1 → 0).
   const fade = useRef(new Animated.Value(1)).current;
+  // Exit motion — the content lifts upward and scales down ever so
+  // slightly while the wrap fades, so the splash feels like it ascends
+  // into the next screen rather than blinking off.
+  const exitTranslate = useRef(new Animated.Value(0)).current;
+  const exitScale = useRef(new Animated.Value(1)).current;
 
   // Per the prototype's @keyframes discIn: 0→1.05→1.0 scale, 0→1 opacity.
   // RN can't do a 3-stop keyframe in one timing(), so we chain
@@ -110,15 +120,19 @@ export function AppSplash({ onDone }: { onDone: () => void }) {
       a.start(); b.start(); c.start();
     });
 
-    // After the intro + a short hold, fade the whole splash out.
+    // After the intro + a short hold, ascend + fade out.
+    // - fade  : 1 → 0       (the navy backdrop dissolves)
+    // - lift  : 0 → -28     (content drifts upward)
+    // - scale : 1 → 0.94    (subtle parallax recession)
+    // All three share a Material "standard" curve so they move together.
     const introMs = Math.max(DISC_DURATION, TAG_DELAY + WORD_DURATION);
+    const exitEasing = Easing.bezier(0.4, 0.0, 0.2, 1);
     const t = setTimeout(() => {
-      Animated.timing(fade, {
-        toValue: 0,
-        duration: FADE_OUT_MS,
-        easing: Easing.bezier(0.4, 0.0, 0.2, 1),
-        useNativeDriver: true,
-      }).start(({ finished }) => {
+      Animated.parallel([
+        Animated.timing(fade, { toValue: 0, duration: FADE_OUT_MS, easing: exitEasing, useNativeDriver: true }),
+        Animated.timing(exitTranslate, { toValue: -28, duration: FADE_OUT_MS, easing: exitEasing, useNativeDriver: true }),
+        Animated.timing(exitScale, { toValue: 0.94, duration: FADE_OUT_MS, easing: exitEasing, useNativeDriver: true }),
+      ]).start(({ finished }) => {
         if (finished) onDone();
       });
     }, introMs + HOLD_AFTER_INTRO_MS);
@@ -127,7 +141,7 @@ export function AppSplash({ onDone }: { onDone: () => void }) {
       clearTimeout(t);
       a.stop(); b.stop(); c.stop();
     };
-  }, [discOpacity, discScale, dot1, dot2, dot3, fade, onDone, tagOpacity, tagTranslate, wordOpacity, wordTranslate]);
+  }, [discOpacity, discScale, dot1, dot2, dot3, exitScale, exitTranslate, fade, onDone, tagOpacity, tagTranslate, wordOpacity, wordTranslate]);
 
   return (
     <Animated.View style={[styles.wrap, { opacity: fade }]} pointerEvents="none">
@@ -141,6 +155,14 @@ export function AppSplash({ onDone }: { onDone: () => void }) {
         end={{ x: 0.5, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
+      <Animated.View
+        style={[
+          styles.contentGroup,
+          {
+            transform: [{ translateY: exitTranslate }, { scale: exitScale }],
+          },
+        ]}
+      >
       <Animated.View
         style={[
           styles.disc,
@@ -179,6 +201,7 @@ export function AppSplash({ onDone }: { onDone: () => void }) {
         <Animated.View style={[styles.dot, { opacity: dot2 }]} />
         <Animated.View style={[styles.dot, { opacity: dot3 }]} />
       </View>
+      </Animated.View>
     </Animated.View>
   );
 }
@@ -193,6 +216,10 @@ const styles = StyleSheet.create({
     zIndex: 999,
     elevation: 999,
   },
+  // Wraps the disc + wordmark + tagline + dots so the exit translate/
+  // scale move them together — the navy backdrop stays put and fades
+  // independently.
+  contentGroup: { alignItems: 'center', justifyContent: 'center' },
   // Smaller than the previous 220×220 to match the HTML prototype's
   // 156×156 — the smaller disc gives the wordmark + dots more vertical
   // room without crowding the centre.
