@@ -90,6 +90,98 @@ function firstName(full: string): string {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// Input validation
+// ─────────────────────────────────────────────────────────────────────────
+//
+// Why this exists:
+//   - The function URL is reachable by any holder of the Supabase anon
+//     key (i.e. anyone running the app). Without validation a bad actor
+//     could POST a huge / malformed body to:
+//       a) burn through the Resend daily quota,
+//       b) reflect arbitrary content into the email we send to the
+//          fulfilment team or a customer,
+//       c) crash the function with an OOM.
+//   - The HTML template already escapes every user-data interpolation,
+//     so the worst we can render is plain text — but we still cap field
+//     lengths to keep emails sane and protect Resend's rate limits.
+//
+// Anything that fails validation returns 400 with a clear reason and
+// we never get to the Resend call.
+const MAX_STR = 500;
+const MAX_NAME = 120;
+const MAX_PHONE = 32;
+const MAX_EMAIL = 254;
+const MAX_NOTES = 1000;
+const MAX_ITEMS = 50;
+const MAX_QTY = 999;
+const MAX_MONEY = 1_000_000;
+
+function isFiniteNonNegative(v: unknown): v is number {
+  return typeof v === 'number' && Number.isFinite(v) && v >= 0 && v < MAX_MONEY;
+}
+
+function isRequiredString(v: unknown, max: number): v is string {
+  return typeof v === 'string' && v.length > 0 && v.length <= max;
+}
+
+function isOptionalString(v: unknown, max: number): boolean {
+  return v === undefined || v === null
+    || (typeof v === 'string' && v.length <= max);
+}
+
+function validate(body: any): { ok: true; payload: Payload } | { ok: false; reason: string } {
+  if (!body || typeof body !== 'object') return { ok: false, reason: 'Body must be an object' };
+  if (!isRequiredString(body.orderNumber, 32)) return { ok: false, reason: 'Invalid orderNumber' };
+  if (body.mode !== 'delivery' && body.mode !== 'pickup') return { ok: false, reason: 'Invalid mode' };
+  if (!isRequiredString(body.customerName, MAX_NAME)) return { ok: false, reason: 'Invalid customerName' };
+  if (!isRequiredString(body.customerPhone, MAX_PHONE)) return { ok: false, reason: 'Invalid customerPhone' };
+  if (!isOptionalString(body.customerEmail, MAX_EMAIL)) return { ok: false, reason: 'Invalid customerEmail' };
+  if (body.customerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.customerEmail)) {
+    return { ok: false, reason: 'customerEmail format' };
+  }
+
+  if (body.mode === 'delivery') {
+    const a = body.address;
+    if (!a || typeof a !== 'object') return { ok: false, reason: 'Address required for delivery' };
+    if (!isRequiredString(a.line1, MAX_STR)) return { ok: false, reason: 'Invalid address.line1' };
+    if (!isOptionalString(a.line2, MAX_STR)) return { ok: false, reason: 'Invalid address.line2' };
+    if (!isRequiredString(a.suburb, MAX_STR)) return { ok: false, reason: 'Invalid address.suburb' };
+    if (!isRequiredString(a.postcode, 8)) return { ok: false, reason: 'Invalid address.postcode' };
+  } else {
+    if (!isOptionalString(body.pickupName, MAX_NAME)) return { ok: false, reason: 'Invalid pickupName' };
+    if (!isOptionalString(body.pickupAddress, MAX_STR)) return { ok: false, reason: 'Invalid pickupAddress' };
+    if (!isOptionalString(body.pickupHours, MAX_STR)) return { ok: false, reason: 'Invalid pickupHours' };
+  }
+
+  if (!Array.isArray(body.items) || body.items.length === 0 || body.items.length > MAX_ITEMS) {
+    return { ok: false, reason: 'items missing or out of range' };
+  }
+  for (const it of body.items) {
+    if (!it || typeof it !== 'object') return { ok: false, reason: 'Invalid item' };
+    if (!isRequiredString(it.name, MAX_NAME)) return { ok: false, reason: 'Invalid item.name' };
+    if (!isOptionalString(it.tin_size, 16)) return { ok: false, reason: 'Invalid item.tin_size' };
+    if (!isOptionalString(it.finish, 32)) return { ok: false, reason: 'Invalid item.finish' };
+    if (!isOptionalString(it.brand, MAX_NAME)) return { ok: false, reason: 'Invalid item.brand' };
+    if (!isOptionalString(it.colour_name, MAX_NAME)) return { ok: false, reason: 'Invalid item.colour_name' };
+    if (typeof it.quantity !== 'number' || !Number.isInteger(it.quantity)
+        || it.quantity < 1 || it.quantity > MAX_QTY) {
+      return { ok: false, reason: 'Invalid item.quantity' };
+    }
+    if (!isFiniteNonNegative(it.unitPrice)) return { ok: false, reason: 'Invalid item.unitPrice' };
+    if (!isFiniteNonNegative(it.lineTotal)) return { ok: false, reason: 'Invalid item.lineTotal' };
+  }
+  if (!isFiniteNonNegative(body.subtotal)
+      || !isFiniteNonNegative(body.delivery)
+      || !isFiniteNonNegative(body.gst)
+      || !isFiniteNonNegative(body.total)) {
+    return { ok: false, reason: 'Invalid totals' };
+  }
+  if (!isOptionalString(body.notes, MAX_NOTES)) return { ok: false, reason: 'Invalid notes' };
+
+  return { ok: true, payload: body as Payload };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // HTML template — single branded layout, headline + greeting flex per
 // recipient kind. Finish lands inline between product name and tin size,
 // e.g. "Noroo Norutone Premium Interior Paint — Matt 1L".
@@ -306,13 +398,22 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  let body: Payload;
-  try { body = await req.json(); }
+  // Length-cap the request body before parsing so a 100 MB payload
+  // can't OOM the function. Content-Length isn't always set; fall back
+  // to a clone-and-measure when it isn't, but bail early when it is.
+  const lengthHeader = req.headers.get('content-length');
+  const MAX_BODY_BYTES = 200_000; // 200 KB is generous for an order email
+  if (lengthHeader && Number(lengthHeader) > MAX_BODY_BYTES) {
+    return json(413, { error: 'Body too large.' });
+  }
+
+  let raw: any;
+  try { raw = await req.json(); }
   catch { return json(400, { error: 'Invalid JSON body.' }); }
 
-  if (!body || !body.orderNumber || !body.items || body.items.length === 0) {
-    return json(400, { error: 'Missing required order fields.' });
-  }
+  const v = validate(raw);
+  if (!v.ok) return json(400, { error: v.reason });
+  const body: Payload = v.payload;
 
   // Fulfilment email — always sent.
   const fulfilmentSubject = `New order #${body.orderNumber} · ${money(body.total)}`;
