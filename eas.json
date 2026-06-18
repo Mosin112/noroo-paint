@@ -23,7 +23,7 @@
         "buildType": "apk"
       },
       "ios": {
-        "simulator": false
+        "simulator": true
       },
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://ccangxyiimmgdtnkfsmm.supabase.co",

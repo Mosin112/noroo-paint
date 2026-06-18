@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Paint Express",
-    "slug": "noroo-paint",
+    "slug": "noroo-paint-app",
     "scheme": "noroopaint",
     "version": "0.2.0",
     "orientation": "portrait",
@@ -50,14 +50,14 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "2157058f-8fe9-4352-8b04-b4e876a5a9af"
+        "projectId": "1bb3f75e-2671-438f-9555-bfd54c54ee79"
       }
     },
     "runtimeVersion": {
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/2157058f-8fe9-4352-8b04-b4e876a5a9af"
+      "url": "https://u.expo.dev/1bb3f75e-2671-438f-9555-bfd54c54ee79"
     }
   }
 }
