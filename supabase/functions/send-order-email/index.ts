@@ -381,7 +381,13 @@ Deno.serve(async (req: Request) => {
   const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
   const TO_EMAIL = Deno.env.get('ORDER_NOTIFICATION_EMAIL');
-  const FROM = Deno.env.get('ORDER_FROM_EMAIL') ?? 'Paint Express <info@paintexpress.com.au>';
+  // Hardcoded sender for both customer + fulfilment emails. We used to
+  // read this from the ORDER_FROM_EMAIL secret as an admin escape hatch,
+  // but the secret kept drifting (last set to mohsin@axepayments.co)
+  // which leaked the wrong "from" address onto customer receipts. The
+  // brand domain (info@paintexpress.com.au) is the only correct sender;
+  // override here if that ever changes.
+  const FROM = 'Paint Express <info@paintexpress.com.au>';
 
   if (!RESEND_API_KEY) return json(500, { error: 'Server missing RESEND_API_KEY.' });
   if (!TO_EMAIL) return json(500, { error: 'Server missing ORDER_NOTIFICATION_EMAIL.' });
