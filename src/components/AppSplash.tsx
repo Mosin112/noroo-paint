@@ -21,10 +21,13 @@ import { colors } from '../theme';
 // Halved from 900ms — the intro animations carry their own visual
 // "beat", and customers were waiting too long after they landed.
 const HOLD_AFTER_INTRO_MS = 450;
-// Slightly longer fade than before so the content has room to glide
-// instead of cutting; combined with the translate-up + scale-down
-// below, the exit reads as one continuous "ascend into the app".
-const FADE_OUT_MS = 460;
+// Staggered exit — disc dissolves first, then the wordmark / tagline /
+// dots, then the navy backdrop. Each piece fades in 360ms; the stagger
+// between starts is 140ms, so the whole exit takes roughly 360+280ms.
+// A subtle 1.0 → 1.05 zoom on the content group runs underneath for
+// the "pulled into the next screen" feel.
+const FADE_OUT_MS = 360;
+const STAGGER_MS = 140;
 // Pull the prototype's curves out so the timing reads at a glance.
 const DISC_DURATION = 700;
 const WORD_DURATION = 550;
@@ -35,12 +38,15 @@ const DISC_EASING = Easing.bezier(0.2, 0.8, 0.2, 1);
 const FADE_UP_EASING = Easing.bezier(0.0, 0.0, 0.2, 1);
 
 export function AppSplash({ onDone }: { onDone: () => void }) {
-  // Exit fade for the whole wrap (1 → 0).
-  const fade = useRef(new Animated.Value(1)).current;
-  // Exit motion — the content lifts upward and scales down ever so
-  // slightly while the wrap fades, so the splash feels like it ascends
-  // into the next screen rather than blinking off.
-  const exitTranslate = useRef(new Animated.Value(0)).current;
+  // Three separate exit fades so the splash peels away in layers.
+  // Disc leaves first, then the wordmark/tagline/dots, then the navy
+  // wrap — the user reads it as the artwork "exiting" before the
+  // background, which feels less like a hard cut than a single
+  // opacity fade.
+  const wrapFade = useRef(new Animated.Value(1)).current;
+  const tailFade = useRef(new Animated.Value(1)).current;
+  // Subtle scale-up on exit — content zooms toward the viewer for
+  // the "pulled into the next screen" feel.
   const exitScale = useRef(new Animated.Value(1)).current;
 
   // Per the prototype's @keyframes discIn: 0→1.05→1.0 scale, 0→1 opacity.
@@ -120,18 +126,36 @@ export function AppSplash({ onDone }: { onDone: () => void }) {
       a.start(); b.start(); c.start();
     });
 
-    // After the intro + a short hold, ascend + fade out.
-    // - fade  : 1 → 0       (the navy backdrop dissolves)
-    // - lift  : 0 → -28     (content drifts upward)
-    // - scale : 1 → 0.94    (subtle parallax recession)
-    // All three share a Material "standard" curve so they move together.
+    // After the intro + a short hold, peel the splash away in layers.
+    // 1) Disc: fades via discOpacity (reused — was 1 after intro).
+    // 2) Tail (wordmark + tagline + dots): fades via tailFade, 140ms
+    //    after the disc starts so it visibly trails behind.
+    // 3) Wrap (navy backdrop + LinearGradient): fades via wrapFade,
+    //    another 140ms later, so the background is the last thing to
+    //    leave the screen.
+    // A gentle scale-up on the content group runs across the whole
+    // exit for the "pulled into the next screen" feel.
     const introMs = Math.max(DISC_DURATION, TAG_DELAY + WORD_DURATION);
-    const exitEasing = Easing.bezier(0.4, 0.0, 0.2, 1);
+    const exitEasing = Easing.bezier(0.0, 0.0, 0.2, 1);
     const t = setTimeout(() => {
+      // Stop the dot loop so the dots fade with the tail instead of
+      // continuing to pulse during the exit.
+      a.stop(); b.stop(); c.stop();
+      const total = FADE_OUT_MS + STAGGER_MS * 2;
       Animated.parallel([
-        Animated.timing(fade, { toValue: 0, duration: FADE_OUT_MS, easing: exitEasing, useNativeDriver: true }),
-        Animated.timing(exitTranslate, { toValue: -28, duration: FADE_OUT_MS, easing: exitEasing, useNativeDriver: true }),
-        Animated.timing(exitScale, { toValue: 0.94, duration: FADE_OUT_MS, easing: exitEasing, useNativeDriver: true }),
+        Animated.timing(exitScale, { toValue: 1.05, duration: total, easing: exitEasing, useNativeDriver: true }),
+        // Disc fades first.
+        Animated.timing(discOpacity, { toValue: 0, duration: FADE_OUT_MS, easing: exitEasing, useNativeDriver: true }),
+        // Tail fades after 140ms.
+        Animated.sequence([
+          Animated.delay(STAGGER_MS),
+          Animated.timing(tailFade, { toValue: 0, duration: FADE_OUT_MS, easing: exitEasing, useNativeDriver: true }),
+        ]),
+        // Wrap fades after another 140ms.
+        Animated.sequence([
+          Animated.delay(STAGGER_MS * 2),
+          Animated.timing(wrapFade, { toValue: 0, duration: FADE_OUT_MS, easing: exitEasing, useNativeDriver: true }),
+        ]),
       ]).start(({ finished }) => {
         if (finished) onDone();
       });
@@ -141,10 +165,10 @@ export function AppSplash({ onDone }: { onDone: () => void }) {
       clearTimeout(t);
       a.stop(); b.stop(); c.stop();
     };
-  }, [discOpacity, discScale, dot1, dot2, dot3, exitScale, exitTranslate, fade, onDone, tagOpacity, tagTranslate, wordOpacity, wordTranslate]);
+  }, [discOpacity, discScale, dot1, dot2, dot3, exitScale, onDone, tagOpacity, tagTranslate, tailFade, wordOpacity, wordTranslate, wrapFade]);
 
   return (
-    <Animated.View style={[styles.wrap, { opacity: fade }]} pointerEvents="none">
+    <Animated.View style={[styles.wrap, { opacity: wrapFade }]} pointerEvents="none">
       {/* Radial-ish navy backdrop — RN doesn't support radial gradients
           natively, so we use a top-to-bottom approximation that reads
           identically with the eye drawn to the centre. */}
@@ -159,7 +183,7 @@ export function AppSplash({ onDone }: { onDone: () => void }) {
         style={[
           styles.contentGroup,
           {
-            transform: [{ translateY: exitTranslate }, { scale: exitScale }],
+            transform: [{ scale: exitScale }],
           },
         ]}
       >
@@ -179,28 +203,30 @@ export function AppSplash({ onDone }: { onDone: () => void }) {
           accessibilityLabel="Noroo Paint"
         />
       </Animated.View>
-      <Animated.View
-        style={[
-          styles.wordmarkRow,
-          { opacity: wordOpacity, transform: [{ translateY: wordTranslate }] },
-        ]}
-      >
-        <Text style={[styles.wordmark, styles.wordmarkPaint]}>PAINT</Text>
-        <Text style={[styles.wordmark, styles.wordmarkExpress]}> EXPRESS</Text>
+      <Animated.View style={[styles.tail, { opacity: tailFade }]}>
+        <Animated.View
+          style={[
+            styles.wordmarkRow,
+            { opacity: wordOpacity, transform: [{ translateY: wordTranslate }] },
+          ]}
+        >
+          <Text style={[styles.wordmark, styles.wordmarkPaint]}>PAINT</Text>
+          <Text style={[styles.wordmark, styles.wordmarkExpress]}> EXPRESS</Text>
+        </Animated.View>
+        <Animated.Text
+          style={[
+            styles.tagline,
+            { opacity: tagOpacity, transform: [{ translateY: tagTranslate }] },
+          ]}
+        >
+          Paint, delivered fast.
+        </Animated.Text>
+        <View style={styles.dotsRow}>
+          <Animated.View style={[styles.dot, { opacity: dot1 }]} />
+          <Animated.View style={[styles.dot, { opacity: dot2 }]} />
+          <Animated.View style={[styles.dot, { opacity: dot3 }]} />
+        </View>
       </Animated.View>
-      <Animated.Text
-        style={[
-          styles.tagline,
-          { opacity: tagOpacity, transform: [{ translateY: tagTranslate }] },
-        ]}
-      >
-        Paint, delivered fast.
-      </Animated.Text>
-      <View style={styles.dotsRow}>
-        <Animated.View style={[styles.dot, { opacity: dot1 }]} />
-        <Animated.View style={[styles.dot, { opacity: dot2 }]} />
-        <Animated.View style={[styles.dot, { opacity: dot3 }]} />
-      </View>
       </Animated.View>
     </Animated.View>
   );
@@ -220,6 +246,9 @@ const styles = StyleSheet.create({
   // scale move them together — the navy backdrop stays put and fades
   // independently.
   contentGroup: { alignItems: 'center', justifyContent: 'center' },
+  // Wordmark + tagline + dots share this wrapper so they can fade as
+  // a unit during the staggered exit, AFTER the disc has dissolved.
+  tail: { alignItems: 'center', justifyContent: 'center' },
   // Smaller than the previous 220×220 to match the HTML prototype's
   // 156×156 — the smaller disc gives the wordmark + dots more vertical
   // room without crowding the centre.
