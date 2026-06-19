@@ -5,7 +5,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   Screen, ScreenHeader, Heading, Field, CTA, Summary, ProgressBar, Alert,
-  SegmentControl,
+  SegmentControl, PickupMap,
   type SummaryLine,
 } from '../../components';
 import { useBasketStore, calculateTotals } from '../../state';
@@ -329,9 +329,12 @@ export function CheckoutScreen({ navigation }: Props) {
         <>
           <Text style={[text.fieldLabel, styles.sectionLabel]}>PICK UP FROM</Text>
           <View style={styles.pickCard}>
-            <Text style={styles.pickName}>{PICKUP_LOCATION.name}</Text>
-            <Text style={styles.pickLine}>{PICKUP_LOCATION.address}</Text>
-            <Text style={styles.pickLine}>{PICKUP_LOCATION.hours}</Text>
+            <View style={styles.pickInfo}>
+              <Text style={styles.pickName}>{PICKUP_LOCATION.name}</Text>
+              <Text style={styles.pickLine}>{PICKUP_LOCATION.address}</Text>
+              <Text style={styles.pickLine}>{PICKUP_LOCATION.hours}</Text>
+            </View>
+            <PickupMap />
           </View>
           <View style={styles.zoneOk}>
             <Check size={14} color={colors.good} strokeWidth={2.5} />
@@ -383,11 +386,15 @@ const styles = StyleSheet.create({
   },
   zoneBadText: { color: colors.warn, fontSize: 12, fontWeight: '600', lineHeight: 16 },
   pickCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
     backgroundColor: colors.paper,
     borderWidth: 1, borderColor: colors.rule,
     borderRadius: 13, paddingVertical: 13, paddingHorizontal: 15,
     marginBottom: 8,
   },
+  pickInfo: { flex: 1, minWidth: 0 },
   pickName: { fontSize: 14, fontWeight: '700', color: colors.ink },
   pickLine: { fontSize: 12, color: colors.muted, marginTop: 3 },
   paymentNote: {

@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Check } from 'lucide-react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Screen, ScreenHeader, ProgressBar, CTA, Summary, type SummaryLine } from '../../components';
+import { Screen, ScreenHeader, ProgressBar, CTA, Summary, PickupMap, type SummaryLine } from '../../components';
 import { colors, spacing, text } from '../../theme';
 import type { ShopStackParamList } from '../../navigation/types';
 
@@ -72,16 +72,19 @@ export function ConfirmedScreen({ route, navigation }: Props) {
           {order.mode === 'pickup' ? 'PICK UP FROM' : 'DELIVER TO'}
         </Text>
         {order.mode === 'pickup' ? (
-          <>
-            {order.pickupName ? <Text style={styles.detailName}>{order.pickupName}</Text> : null}
-            {order.pickupAddress ? <Text style={styles.detailLine}>{order.pickupAddress}</Text> : null}
-            {order.pickupHours ? <Text style={styles.detailLine}>{order.pickupHours}</Text> : null}
-            {order.customerName ? (
-              <Text style={[styles.detailLine, styles.detailLineGap]}>
-                {order.customerName}{order.customerPhone ? ` · ${order.customerPhone}` : ''}
-              </Text>
-            ) : null}
-          </>
+          <View style={styles.pickupRow}>
+            <View style={styles.pickupInfo}>
+              {order.pickupName ? <Text style={styles.detailName}>{order.pickupName}</Text> : null}
+              {order.pickupAddress ? <Text style={styles.detailLine}>{order.pickupAddress}</Text> : null}
+              {order.pickupHours ? <Text style={styles.detailLine}>{order.pickupHours}</Text> : null}
+              {order.customerName ? (
+                <Text style={[styles.detailLine, styles.detailLineGap]}>
+                  {order.customerName}{order.customerPhone ? ` · ${order.customerPhone}` : ''}
+                </Text>
+              ) : null}
+            </View>
+            <PickupMap />
+          </View>
         ) : (
           <>
             <Text style={styles.detailName}>{order.customerName}</Text>
@@ -169,4 +172,8 @@ const styles = StyleSheet.create({
   detailName: { fontSize: 14, fontWeight: '700', color: colors.ink, marginBottom: 4 },
   detailLine: { fontSize: 12.5, color: colors.ink2, lineHeight: 18 },
   detailLineGap: { marginTop: 8 },
+  // Two-column pickup layout — store info on the left, map thumbnail
+  // and Directions pill on the right.
+  pickupRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  pickupInfo: { flex: 1, minWidth: 0 },
 });
